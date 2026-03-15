@@ -24,14 +24,13 @@ export function FinancialChart({ invoices, expenses }: FinancialChartProps) {
     const [filter, setFilter] = useState("6months")
 
     // Sort data first
-    const sortedInvoices = useMemo(() => [...invoices].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()), [invoices])
-    const sortedExpenses = useMemo(() => [...expenses].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()), [expenses])
+    const sortedInvoices = useMemo(() => [...invoices].sort((a, b) => new Date(a.fecha || a.created_at).getTime() - new Date(b.fecha || b.created_at).getTime()), [invoices])
+    const sortedExpenses = useMemo(() => [...expenses].sort((a, b) => new Date(a.fecha || a.created_at).getTime() - new Date(b.fecha || b.created_at).getTime()), [expenses])
 
     const data = useMemo(() => {
         const today = new Date()
         let start: Date
         let end: Date = endOfMonth(today)
-        let mode: 'month' | 'year' = 'month'
 
         if (filter === "6months") {
             start = startOfMonth(subMonths(today, 5))
@@ -39,8 +38,8 @@ export function FinancialChart({ invoices, expenses }: FinancialChartProps) {
             start = startOfYear(today)
         } else if (filter === "all") {
             // Find earliest date
-            const firstInvoice = sortedInvoices[0]?.created_at
-            const firstExpense = sortedExpenses[0]?.created_at
+            const firstInvoice = sortedInvoices[0]?.fecha || sortedInvoices[0]?.created_at
+            const firstExpense = sortedExpenses[0]?.fecha || sortedExpenses[0]?.created_at
             const d1 = firstInvoice ? new Date(firstInvoice) : today
             const d2 = firstExpense ? new Date(firstExpense) : today
             start = startOfMonth(d1 < d2 ? d1 : d2)
@@ -55,7 +54,8 @@ export function FinancialChart({ invoices, expenses }: FinancialChartProps) {
             const rangeEnd = endOfMonth(month)
 
             const monthlyInvoices = sortedInvoices.filter(i => {
-                const d = new Date(i.created_at)
+                const dateStr = i.fecha || i.created_at
+                const d = new Date(dateStr)
                 return d >= rangeStart && d <= rangeEnd
             })
 

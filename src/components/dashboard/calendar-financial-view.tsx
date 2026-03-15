@@ -32,7 +32,7 @@ interface Transaction {
     descripcion: string
     empresa: string
     referencia: string
-    tipo: 'ingreso' | 'gasto' | 'presupuesto' | 'albaran'
+    tipo: 'ingreso_pagado' | 'ingreso_pendiente' | 'gasto' | 'presupuesto' | 'albaran'
     es_recurrente?: boolean
     frecuencia?: 'unico' | 'semanal' | 'mensual' | 'anual'
 }
@@ -65,6 +65,13 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
         
         const startDate = parseISO(dateStr)
 
+        // For Invoices, determine if paid
+        let finalType = type
+        if (type === 'ingreso_pendiente') {
+            const isPaid = item.estado === 'PAGADA' || item.pagada === true || item.statuses?.includes('pagada')
+            if (isPaid) finalType = 'ingreso_pagado'
+        }
+
         // If not recurring, just check if it's in the current month-ish view
         if (!item.es_recurrente || item.frecuencia === 'unico') {
             occurrences.push({
@@ -74,7 +81,7 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                 descripcion: item.descripcion || item.observaciones || '',
                 empresa: item.cliente_razon_social || item.proveedor || item.cliente || 'S/N',
                 referencia: item.numero || 'S/R',
-                tipo: type
+                tipo: finalType
             })
             return occurrences
         }
@@ -94,7 +101,7 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                     referencia: item.numero || 'S/R',
                     es_recurrente: true,
                     frecuencia: item.frecuencia,
-                    tipo: type
+                    tipo: finalType
                 })
             }
 
@@ -112,7 +119,7 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
 
         // Invoices
         invoices.forEach(inv => {
-            const occs = getOccurrences(inv, 'ingreso', calendarStart, calendarEnd)
+            const occs = getOccurrences(inv, 'ingreso_pendiente', calendarStart, calendarEnd)
             trans.push(...occs)
         })
 
@@ -139,9 +146,10 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
 
     const getDayData = (day: Date) => {
         const dayTrans = allTransactions.filter(t => isSameDay(parseISO(t.fecha), day))
-        const income = dayTrans.filter(t => t.tipo === 'ingreso').reduce((acc, t) => acc + t.total, 0)
+        const incomePaid = dayTrans.filter(t => t.tipo === 'ingreso_pagado').reduce((acc, t) => acc + t.total, 0)
+        const incomePending = dayTrans.filter(t => t.tipo === 'ingreso_pendiente').reduce((acc, t) => acc + t.total, 0)
         const expense = dayTrans.filter(t => t.tipo === 'gasto').reduce((acc, t) => acc + t.total, 0)
-        return { income, expense, transactions: dayTrans }
+        return { incomePaid, incomePending, expense, transactions: dayTrans }
     }
 
     return (
@@ -152,8 +160,8 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                         <CalendarIcon className="h-5 w-5" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Control Financiero Global</h3>
-                        <p className="text-xs font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Reflejo de actividad ERP</p>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Sincronización Financiera ERP</h3>
+                        <p className="text-xs font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Reflejo en Tiempo Real</p>
                     </div>
                 </div>
 
@@ -188,7 +196,7 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                 ))}
 
                 {days.map((day, i) => {
-                    const { income, expense, transactions } = getDayData(day)
+                    const { transactions } = getDayData(day)
                     const isToday = isSameDay(day, new Date())
                     const isCurrentMonth = isSameMonth(day, monthStart)
 
@@ -208,20 +216,22 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                 {format(day, 'd')}
                             </span>
 
-                            <div className="flex-1 space-y-1 overflow-y-auto max-h-[80px] custom-scrollbar">
+                            <div className="flex-1 space-y-1 overflow-y-auto max-h-[85px] custom-scrollbar">
                                 {transactions.map((t) => (
                                     <TooltipProvider key={t.id}>
                                         <Tooltip delayDuration={0}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
-                                                    "text-[9px] font-bold px-1.5 py-0.5 rounded cursor-help flex items-center justify-between border",
-                                                    t.tipo === 'ingreso' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                                    "text-[9px] font-bold px-1.5 py-0.5 rounded cursor-help flex items-center justify-between border shadow-[0_1px_2px_rgba(0,0,0,0.02)]",
+                                                    t.tipo === 'ingreso_pagado' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                                    t.tipo === 'ingreso_pendiente' ? "bg-orange-50 text-orange-700 border-orange-100" :
                                                     t.tipo === 'gasto' ? "bg-rose-50 text-rose-700 border-rose-100" :
                                                     t.tipo === 'presupuesto' ? "bg-blue-50 text-blue-700 border-blue-100" :
                                                     "bg-amber-50 text-amber-700 border-amber-100"
                                                 )}>
-                                                    <span className="truncate max-w-[40px]">
-                                                        {t.tipo === 'ingreso' ? 'Ingreso' : 
+                                                    <span className="truncate max-w-[45px]">
+                                                        {t.tipo === 'ingreso_pagado' ? 'Pagada' : 
+                                                         t.tipo === 'ingreso_pendiente' ? 'Pendiente' : 
                                                          t.tipo === 'gasto' ? 'Gasto' : 
                                                          t.tipo === 'presupuesto' ? 'Presup.' : 'Alb.'}
                                                     </span>
@@ -230,29 +240,35 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                     </span>
                                                 </div>
                                             </TooltipTrigger>
-                                            <TooltipContent side="top" className="bg-slate-900 text-white border-0 rounded-xl p-3 shadow-2xl z-50">
-                                                <div className="space-y-1">
+                                            <TooltipContent side="top" className="bg-slate-900 text-white border-0 rounded-xl p-3 shadow-2xl z-50 min-w-[200px]">
+                                                <div className="space-y-1.5">
                                                     <div className="flex items-center justify-between gap-4">
                                                         <span className={cn(
                                                             "text-[9px] font-black uppercase tracking-widest",
-                                                            t.tipo === 'ingreso' ? "text-emerald-400" : 
+                                                            t.tipo === 'ingreso_pagado' ? "text-emerald-400" : 
+                                                            t.tipo === 'ingreso_pendiente' ? "text-orange-400" : 
                                                             t.tipo === 'gasto' ? "text-rose-400" : 
                                                             t.tipo === 'presupuesto' ? "text-blue-400" : "text-amber-400"
                                                         )}>
-                                                            {t.tipo.toUpperCase()}
+                                                            {t.tipo.replace('_', ' ').toUpperCase()}
                                                         </span>
-                                                        <span className="text-[10px] font-bold font-mono">
+                                                        <span className="text-[11px] font-bold font-mono">
                                                             {formatCurrency(t.total)}
                                                         </span>
                                                     </div>
-                                                    <div className="h-px bg-white/10 my-1" />
-                                                    <p className="text-[11px] font-black">{t.empresa}</p>
-                                                    <p className="text-[10px] font-medium text-slate-400">Ref: {t.referencia}</p>
+                                                    <div className="h-px bg-white/10 my-1.5" />
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-[11px] font-black">{t.empresa}</p>
+                                                        <p className="text-[10px] font-medium text-slate-400">Ref: {t.referencia}</p>
+                                                    </div>
                                                     {t.descripcion && (
-                                                        <p className="text-[10px] italic text-slate-500 mt-1 max-w-[200px]">{t.descripcion}</p>
+                                                        <p className="text-[10px] italic text-slate-500 mt-1 leading-normal border-l-2 border-white/10 pl-2">{t.descripcion}</p>
                                                     )}
                                                     {t.es_recurrente && (
-                                                        <p className="text-[8px] font-bold text-primary uppercase mt-1">● Recurrente ({t.frecuencia})</p>
+                                                        <div className="flex items-center gap-2 mt-2 pt-1 border-t border-white/5">
+                                                            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                                            <p className="text-[8px] font-bold text-primary uppercase tracking-tighter">Recurrente ({t.frecuencia})</p>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </TooltipContent>
@@ -265,25 +281,26 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                 })}
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-4 items-center border-t border-slate-100 pt-6">
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded bg-emerald-500"></div>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Facturas</span>
+            <div className="mt-8 flex flex-wrap gap-5 items-center border-t border-slate-100 pt-6">
+                <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Facturas Cobradas</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded bg-rose-500"></div>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Gastos</span>
+                <div className="flex items-center gap-2 text-orange-600 bg-orange-50 px-2.5 py-1.5 rounded-lg border border-orange-100">
+                    <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]"></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Facturas Pendientes</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded bg-blue-500"></div>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Presupuestos</span>
+                <div className="flex items-center gap-2 text-rose-600 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-100">
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]"></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Gastos / Compras</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded bg-amber-500"></div>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Albaranes</span>
+                <div className="flex items-center gap-2 text-slate-400 px-2.5 py-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500/50"></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Otros (Pres./Alb.)</span>
                 </div>
-                <div className="ml-auto text-[9px] font-bold italic text-slate-400">
-                    * Todos los documentos se muestran por fecha de creación/emisión
+                <div className="ml-auto flex items-center gap-2 text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                    <Info className="h-3.5 w-3.5" />
+                    <span className="text-[9px] font-bold italic tracking-tight uppercase">Sincronización Total Activa</span>
                 </div>
             </div>
         </Card>

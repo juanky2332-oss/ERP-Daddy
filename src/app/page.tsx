@@ -22,9 +22,9 @@ async function getStats(monthFilter: string | undefined) {
     { data: gastos },
     { data: historial }
   ] = await Promise.all([
-    supabase.from('presupuestos').select('total, created_at, numero, cliente_razon_social, descripcion').order('created_at', { ascending: false }),
-    supabase.from('albaranes').select('total, created_at, numero, cliente_razon_social, observaciones').is('documento_firmado_url', null).order('created_at', { ascending: false }),
-    supabase.from('facturas').select('total, created_at, estado, pagada, statuses, fecha_pago, es_recurrente, frecuencia, cliente_razon_social, numero, descripcion').order('created_at', { ascending: false }),
+    supabase.from('presupuestos').select('total, created_at, fecha, numero, cliente_razon_social, descripcion').order('created_at', { ascending: false }),
+    supabase.from('albaranes').select('total, created_at, fecha, numero, cliente_razon_social, observaciones').is('documento_firmado_url', null).order('created_at', { ascending: false }),
+    supabase.from('facturas').select('total, created_at, fecha, estado, pagada, statuses, fecha_pago, es_recurrente, frecuencia, cliente_razon_social, numero, descripcion').order('created_at', { ascending: false }),
     supabase.from('gastos').select('total, base_imponible, iva_importe, fecha, created_at, es_recurrente, frecuencia, descripcion, proveedor, numero').order('created_at', { ascending: false }),
     supabase.from('notificaciones_historial').select('*').order('created_at', { ascending: false }).limit(5)
   ])

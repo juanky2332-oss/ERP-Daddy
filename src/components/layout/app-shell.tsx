@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { useState, useEffect, useRef } from 'react'
 import { searchGlobal, SearchResult } from '@/actions/search'
 import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es } from 'date-fns/locale/es'
 import { Sidebar, SidebarContent } from '@/components/layout/sidebar'
 import { Button } from '@/components/ui/button'
 import { useGlobalFilter } from '@/components/providers/global-filter-provider'
@@ -23,7 +23,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     const router = useRouter()
-    const { monthYear, setMonthYear } = useGlobalFilter()
+    const { month, year } = useGlobalFilter()
 
     // Global Search State
     const [searchQuery, setSearchQuery] = useState('')

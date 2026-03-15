@@ -4,7 +4,7 @@ import { Plus, Search, FileText, Eye, Trash2, Loader2, Edit, Check, Mail, ArrowR
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es } from 'date-fns/locale/es'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useState } from 'react'

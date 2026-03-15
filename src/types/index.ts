@@ -24,6 +24,7 @@ export interface Presupuesto {
     iva_importe: number
     total: number
     estado: 'borrador' | 'enviado' | 'aceptado' | 'rechazado' | 'convertido' | 'gestionado'
+    descripcion?: string
     statuses: string[]
     observaciones?: string
     pdf_url?: string
@@ -56,6 +57,8 @@ export interface Albaran {
     documento_firmado_url?: string
     pdf_url?: string
     observaciones?: string
+    estado_vida?: string
+    es_enviado?: boolean
     created_at: string
     updated_at: string
 }
@@ -87,7 +90,11 @@ export interface Factura {
     fecha_envio?: string
     pagada: boolean
     fecha_pago?: string
+    es_recurrente: boolean
+    frecuencia?: 'unico' | 'semanal' | 'mensual' | 'anual'
     pdf_url?: string
+    descripcion?: string
+    base_imponible?: number
     observaciones?: string
     created_at: string
     updated_at: string

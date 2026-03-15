@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { format } from 'date-fns'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { es } from 'date-fns/locale'
+import { es } from 'date-fns/locale/es'
 
 /* New robust provider supporting separate Month and Year */
 interface GlobalFilterContextType {

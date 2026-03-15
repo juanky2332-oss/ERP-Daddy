@@ -3,8 +3,9 @@ import { FileText, Box, FileInput, Receipt, Activity, TrendingUp, TrendingDown, 
 import { createClient } from "@/lib/supabase/server"
 import { FinancialChart } from "@/components/dashboard/financial-chart"
 import Link from "next/link"
-import { format, startOfMonth, endOfMonth, parseISO } from "date-fns"
-import { es } from "date-fns/locale"
+import { startOfMonth, endOfMonth, format, parseISO } from 'date-fns'
+import { CalendarFinancialView } from '@/components/dashboard/calendar-financial-view'
+import { es } from 'date-fns/locale/es'
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -19,14 +20,12 @@ async function getStats(monthFilter: string | undefined) {
     { data: albaranes },
     { data: facturas },
     { data: gastos },
-    { data: albaranesFirmados },
     { data: historial }
   ] = await Promise.all([
     supabase.from('presupuestos').select('total, created_at').order('created_at', { ascending: false }),
     supabase.from('albaranes').select('total, created_at').is('documento_firmado_url', null).order('created_at', { ascending: false }),
-    supabase.from('facturas').select('total, created_at, estado, pagada, statuses').order('created_at', { ascending: false }),
-    supabase.from('gastos').select('total, base_imponible, iva_importe, fecha, created_at').order('created_at', { ascending: false }),
-    supabase.from('albaranes').select('total, created_at').not('documento_firmado_url', 'is', null).order('created_at', { ascending: false }),
+    supabase.from('facturas').select('total, created_at, estado, pagada, statuses, fecha_pago, es_recurrente, frecuencia, cliente_razon_social, numero').order('created_at', { ascending: false }),
+    supabase.from('gastos').select('total, base_imponible, iva_importe, fecha, created_at, es_recurrente, frecuencia, descripcion, proveedor, numero').order('created_at', { ascending: false }),
     supabase.from('notificaciones_historial').select('*').order('created_at', { ascending: false }).limit(5)
   ])
 
@@ -53,7 +52,6 @@ async function getStats(monthFilter: string | undefined) {
   const filteredAlbaranes = albaranes?.filter(d => filterByDate(d)) || []
   const filteredFacturas = facturas?.filter(d => filterByDate(d)) || []
   const filteredGastos = gastos?.filter(d => filterByDate(d, 'fecha')) || [] // Gastos often use 'fecha'
-  const filteredAlbaranesFirmados = albaranesFirmados?.filter(d => filterByDate(d)) || []
 
   // Calculate totals
   const totalPresupuestos = filteredPresupuestos.reduce((acc: number, curr: any) => acc + (Number(curr.total) || 0), 0)
@@ -63,7 +61,6 @@ async function getStats(monthFilter: string | undefined) {
     const amount = Number(curr.total) || (Number(curr.base_imponible || 0) + Number(curr.iva_importe || 0)) || 0
     return acc + amount
   }, 0)
-  const totalAlbaranesFirmados = filteredAlbaranesFirmados.reduce((acc: number, curr: any) => acc + (Number(curr.total) || 0), 0)
 
   const netProfit = totalFacturado - totalGastos
 
@@ -72,15 +69,13 @@ async function getStats(monthFilter: string | undefined) {
       presupuesto: totalPresupuestos,
       albaran: totalAlbaranes,
       factura: totalFacturado,
-      gasto: totalGastos,
-      albaranFirmado: totalAlbaranesFirmados
+      gasto: totalGastos
     },
     counts: {
       presupuesto: filteredPresupuestos.length,
       albaran: filteredAlbaranes.length,
       factura: filteredFacturas.length,
-      gasto: filteredGastos.length,
-      albaranFirmado: filteredAlbaranesFirmados.length
+      gasto: filteredGastos.length
     },
     financials: {
       income: totalFacturado,
@@ -88,12 +83,7 @@ async function getStats(monthFilter: string | undefined) {
       profit: netProfit
     },
     chartData: {
-      facturas: facturas || [], // Keep full history for chart usually, but user asked for "MONTHLY vs YEARLY". 
-      // Chart component handles its own filtering ? No, usually it shows a trend. 
-      // If user filters by ONE MONTH, chart should probably show days of that month?
-      // Or just keep showing default trend. Text says "Changes to Month Filter".
-      // Let's pass ALL data to chart for now so it can show trend, or filter it if the chart supports it.
-      // The user wants to see "TOTALS" affected by filter.
+      facturas: facturas || [],
       gastos: gastos || []
     },
     historial: historial || []
@@ -203,7 +193,7 @@ export default async function Dashboard({ searchParams }: { searchParams: { mont
       </div>
 
       {/* Main Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <DocCard
           title="Presupuestos"
           total={stats.totals.presupuesto}
@@ -236,15 +226,13 @@ export default async function Dashboard({ searchParams }: { searchParams: { mont
           href="/gastos"
           colorScheme="red"
         />
-        <DocCard
-          title="Fichados/Firmas"
-          total={stats.totals.albaranFirmado}
-          count={stats.counts.albaranFirmado}
-          icon={TrendingUp}
-          href="/albaranes-firmados"
-          colorScheme="purple"
-        />
       </div>
+
+      {/* Calendar Forecast View */}
+      <CalendarFinancialView
+        invoices={stats.chartData.facturas}
+        expenses={stats.chartData.gastos}
+      />
 
       {/* Chart & Insights Section */}
       <div className="grid gap-8">

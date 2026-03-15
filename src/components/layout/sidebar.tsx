@@ -12,6 +12,7 @@ import {
     Mail,
     ChevronLeft,
     ChevronRight,
+    Calculator
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -22,12 +23,12 @@ const navItems = [
     { href: '/albaranes', label: 'Albaranes', icon: Box },
     { href: '/facturas', label: 'Facturas', icon: FileInput },
     { href: '/gastos', label: 'Gastos', icon: Receipt },
-    { href: '/albaranes-firmados', label: 'Alb. Firmados', icon: FileText },
 ]
 
 const secondaryItems = [
     { href: '/contactos', label: 'Contactos', icon: Users },
     { href: '/emails', label: 'Emails', icon: Mail },
+    { href: '/calculadora', label: 'Calculadora', icon: Calculator },
 ]
 
 // 1. EXTRAEMOS LA INTERFAZ AQUÍ ARRIBA

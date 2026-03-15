@@ -17,7 +17,7 @@ import { FileText, Trash2, Plus, Loader2, Search, AlertCircle, Check, Mail, Edit
 import { DocumentPreviewModal } from '@/components/documents/document-preview-modal'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es } from 'date-fns/locale/es'
 import { Badge } from '@/components/ui/badge'
 import { cn, formatCurrency } from '@/lib/utils'
 import { SortableHeader } from '@/components/ui/sortable-header'
@@ -70,7 +70,7 @@ export default function FacturasPage() {
     }
 
     const handleStatusUpdate = (doc: any, newStatus: string, value?: boolean) => {
-        const currentStatuses = new Set(doc.statuses || [])
+        const currentStatuses = new Set<string>(doc.statuses || [])
 
         if (newStatus === 'ENVIADA') {
             if (value) currentStatuses.add('enviado')

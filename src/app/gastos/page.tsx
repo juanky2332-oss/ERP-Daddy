@@ -14,9 +14,11 @@ import { Plus, Search, Upload, Trash2, Loader2, FileText, RotateCcw, PenLine } f
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es } from 'date-fns/locale/es'
 import { processExpense } from '@/actions/secure-upload'
 import { SortableHeader } from '@/components/ui/sortable-header'
 import { useGlobalFilter } from '@/components/providers/global-filter-provider'
@@ -51,7 +53,9 @@ export default function GastosPage() {
         descripcion: '',
         base_imponible: '',
         iva_importe: '',
-        total: ''
+        total: '',
+        es_recurrente: false,
+        frecuencia: 'unico' as 'unico' | 'semanal' | 'mensual' | 'anual'
     })
 
     const { gastos, totalCount, stats, isLoading, createExpense, deleteExpense } = useExpenses({
@@ -70,7 +74,7 @@ export default function GastosPage() {
         createExpense.mutate(manualForm, {
             onSuccess: () => {
                 setIsManualOpen(false)
-                setManualForm({ fecha: new Date().toISOString().split('T')[0], numero: '', referencia_pedido: '', proveedor: '', descripcion: '', base_imponible: '', iva_importe: '', total: '' })
+                setManualForm({ fecha: new Date().toISOString().split('T')[0], numero: '', referencia_pedido: '', proveedor: '', descripcion: '', base_imponible: '', iva_importe: '', total: '', es_recurrente: false, frecuencia: 'unico' })
             }
         })
     }
@@ -167,6 +171,34 @@ export default function GastosPage() {
                                                 <Input id="total" type="number" step="0.01" value={manualForm.total} onChange={e => setManualForm({ ...manualForm, total: e.target.value })} />
                                             </div>
                                         </div>
+                                        <div className="flex items-center justify-between p-3 border rounded-xl bg-slate-50/50">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-slate-700">Gasto Recurrente</span>
+                                                <span className="text-[10px] text-slate-500">Se proyectará en el calendario futuro</span>
+                                            </div>
+                                            <Switch
+                                                checked={manualForm.es_recurrente}
+                                                onCheckedChange={(checked) => setManualForm({ ...manualForm, es_recurrente: checked })}
+                                            />
+                                        </div>
+                                        {manualForm.es_recurrente && (
+                                            <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <Label htmlFor="frequency">Periodicidad</Label>
+                                                <Select
+                                                    value={manualForm.frecuencia}
+                                                    onValueChange={(val: any) => setManualForm({ ...manualForm, frecuencia: val })}
+                                                >
+                                                    <SelectTrigger id="frequency" className="rounded-xl">
+                                                        <SelectValue placeholder="Seleccionar frecuencia" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="semanal">Semanal</SelectItem>
+                                                        <SelectItem value="mensual">Mensual</SelectItem>
+                                                        <SelectItem value="anual">Anual</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
                                         <Button onClick={handleCreateManual} disabled={createExpense.isPending} className="w-full mt-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl">
                                             {createExpense.isPending ? <Loader2 className="animate-spin" /> : 'Guardar Gasto'}
                                         </Button>

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export type SearchResult = {
     id: string
-    type: 'presupuesto' | 'albaran' | 'factura' | 'gasto' | 'albaran_firmado'
+    type: 'presupuesto' | 'albaran' | 'factura' | 'gasto'
     numero: string
     date: string
     client: string
@@ -71,15 +71,14 @@ export async function searchGlobal(query: string): Promise<SearchResult[]> {
                     }))
                 } else if (type === 'albaran') {
                     data.forEach((a: any) => {
-                        const isSigned = !!a.documento_firmado_url
                         results.push({
                             id: a.id,
-                            type: isSigned ? 'albaran_firmado' : 'albaran',
+                            type: 'albaran',
                             numero: a.numero,
                             date: a.fecha,
                             client: a.cliente_razon_social,
                             total: a.total,
-                            url: isSigned ? `/albaranes-firmados?search=${a.numero}` : `/albaranes?search=${a.numero}`,
+                            url: `/albaranes?search=${a.numero}`,
                             reference: a.pedido_referencia
                         })
                     })

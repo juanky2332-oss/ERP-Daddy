@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { FileText, Trash2, Plus, Loader2, Search, Edit, Check, Mail, XCircle, ArrowRight, CheckCircle2, PieChart, Euro, FileEdit, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es } from 'date-fns/locale/es'
 import { DocumentPreviewModal } from '@/components/documents/document-preview-modal'
 import { cn, formatCurrency } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -72,7 +72,7 @@ export default function PresupuestosPage() {
     }
 
     const handleStatusUpdate = (budget: any, newStatus: string, value?: boolean) => {
-        const currentStatuses = new Set(budget.statuses || [])
+        const currentStatuses = new Set<string>(budget.statuses || [])
 
         if (newStatus === 'ENVIADO') {
             if (value) currentStatuses.add('enviado')

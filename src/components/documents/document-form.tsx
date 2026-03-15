@@ -12,10 +12,12 @@ import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ClientCombobox } from '@/components/contacts/client-combobox'
 import { Trash2, Plus, CalendarIcon, Save, FileText } from 'lucide-react'
 import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es } from 'date-fns/locale/es'
 import { cn, formatNumberInput } from '@/lib/utils'
 import { Contacto } from '@/types'
 import { PriceCalculator } from './price-calculator'
@@ -37,6 +39,8 @@ const documentSchema = z.object({
     observaciones: z.string().optional(),
     lineas: z.array(lineItemSchema).min(1, 'Al menos una línea es requerida'),
     iva_porcentaje: z.coerce.number().min(0).default(21),
+    es_recurrente: z.boolean().default(false),
+    frecuencia: z.enum(['unico', 'semanal', 'mensual', 'anual']).default('unico')
 })
 
 type formValues = z.infer<typeof documentSchema>
@@ -64,6 +68,8 @@ export function DocumentForm({ type, initialData, onSubmit, onGeneratePdf }: Doc
             fecha: new Date(),
             lineas: [{ descripcion: '', cantidad: 1, precio_unitario: 0, importe: 0 }],
             iva_porcentaje: 21,
+            es_recurrente: false,
+            frecuencia: 'unico',
             ...initialData
         }
     })
@@ -390,7 +396,58 @@ export function DocumentForm({ type, initialData, onSubmit, onGeneratePdf }: Doc
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1">
+                {type === 'factura' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-blue-50/30">
+                            <div className="flex flex-col">
+                                <span className="text-sm font-bold text-slate-700">Factura Recurrente</span>
+                                <span className="text-[10px] text-slate-500">Proyección automática de ingresos futuros</span>
+                            </div>
+                            <FormField
+                                control={form.control}
+                                name="es_recurrente"
+                                render={({ field }: { field: any }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        {form.watch('es_recurrente') && (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <FormField
+                                    control={form.control}
+                                    name="frecuencia"
+                                    render={({ field }: { field: any }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-[10px] font-bold text-gray-500 uppercase">Periodicidad</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-11 rounded-xl">
+                                                        <SelectValue placeholder="Seleccionar frecuencia" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="semanal">Semanal</SelectItem>
+                                                    <SelectItem value="mensual">Mensual</SelectItem>
+                                                    <SelectItem value="anual">Anual</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
+                <div className="grid grid-cols-1 border-t pt-8">
                     <FormField
                         control={form.control}
                         name="observaciones"

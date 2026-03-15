@@ -8,7 +8,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { format, subMonths, addMonths, startOfMonth } from "date-fns"
-import { es } from "date-fns/locale"
+import { es } from "date-fns/locale/es"
 
 interface MonthYearPickerProps {
     value: string // Format: "YYYY-MM" or "all"

@@ -143,8 +143,17 @@ export function MaterialCalculator() {
                                 <SelectValue placeholder="Seleccionar material" />
                             </SelectTrigger>
                             <SelectContent>
-                                {pricesRaw?.map(p => (
-                                    <SelectItem key={p.id} value={p.id}>{p.material} ({p.precio_por_kg} €/kg)</SelectItem>
+                                {pricesRaw && Array.from(new Set(pricesRaw.map(p => p.tipo || 'General'))).map(tipo => (
+                                    <div key={tipo}>
+                                        <div className="px-2 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">
+                                            {tipo}
+                                        </div>
+                                        {pricesRaw.filter(p => (p.tipo || 'General') === tipo).map(p => (
+                                            <SelectItem key={p.id} value={p.id}>
+                                                {p.material} ({p.precio_por_kg} €/kg)
+                                            </SelectItem>
+                                        ))}
+                                    </div>
                                 ))}
                             </SelectContent>
                         </Select>

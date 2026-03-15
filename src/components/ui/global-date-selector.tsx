@@ -9,7 +9,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { es } from "date-fns/locale/es"
 import { useGlobalFilter } from "@/components/providers/global-filter-provider"
 
 export function GlobalDateSelector() {

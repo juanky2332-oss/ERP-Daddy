@@ -9,7 +9,7 @@ import { DocumentPreviewModal } from '@/components/documents/document-preview-mo
 import { supabase } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es } from 'date-fns/locale/es'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GlobalDateSelector } from '@/components/ui/global-date-selector'
 import { useSignedDeliveryNotes } from '@/hooks/use-signed-delivery-notes'
 import { formatCurrency } from '@/lib/utils'
+import { uploadSignedAlbaranAction } from '@/actions/secure-upload'
 
 export default function AlbaranesFirmadosPage() {
     const { month, year } = useGlobalFilter()
@@ -69,7 +70,6 @@ export default function AlbaranesFirmadosPage() {
             const formData = new FormData()
             formData.append('file', file)
 
-            const { uploadSignedAlbaranAction } = await import('@/actions/secure-upload')
             const result = await uploadSignedAlbaranAction(formData)
 
             if (!result.success) throw new Error(result.error)

@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+*.log
+git_err.txt
+push_error.txt
+push_error_cmd.txt

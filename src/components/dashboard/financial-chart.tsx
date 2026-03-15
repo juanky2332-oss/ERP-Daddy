@@ -55,19 +55,33 @@ export function FinancialChart({ invoices, expenses }: FinancialChartProps) {
 
             const monthlyInvoices = sortedInvoices.filter(i => {
                 const dateStr = i.fecha || i.created_at
+                if (!dateStr) return false
                 const d = new Date(dateStr)
                 return d >= rangeStart && d <= rangeEnd
             })
 
             const monthlyExpenses = sortedExpenses.filter(e => {
-                // Check both created_at and fecha if available (OCR often extracts fecha)
                 const dateStr = e.fecha || e.created_at
+                if (!dateStr) return false
                 const d = new Date(dateStr)
                 return d >= rangeStart && d <= rangeEnd
             })
 
-            const paidInvoices = monthlyInvoices.filter(i => i.estado === 'PAGADA' || i.pagada === true || i.statuses?.includes('pagada'))
-            const pendingInvoices = monthlyInvoices.filter(i => i.estado !== 'PAGADA' && i.pagada !== true && !i.statuses?.includes('pagada'))
+            const paidInvoices = monthlyInvoices.filter(i => {
+                const isPaid = i.estado?.toUpperCase() === 'PAGADA' || 
+                               i.estado?.toLowerCase() === 'pagada' || 
+                               i.pagada === true || 
+                               i.statuses?.some((s: string) => s.toLowerCase() === 'pagada')
+                return isPaid
+            })
+            
+            const pendingInvoices = monthlyInvoices.filter(i => {
+                const isPaid = i.estado?.toUpperCase() === 'PAGADA' || 
+                               i.estado?.toLowerCase() === 'pagada' || 
+                               i.pagada === true || 
+                               i.statuses?.some((s: string) => s.toLowerCase() === 'pagada')
+                return !isPaid
+            })
 
             const paidAmount = paidInvoices.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0)
             const pendingAmount = pendingInvoices.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0)

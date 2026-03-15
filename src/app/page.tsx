@@ -22,11 +22,11 @@ async function getStats(monthFilter: string | undefined) {
     { data: gastos },
     { data: historial }
   ] = await Promise.all([
-    supabase.from('presupuestos').select('total, created_at, fecha, numero, cliente_razon_social, descripcion').order('created_at', { ascending: false }),
-    supabase.from('albaranes').select('total, created_at, fecha, numero, cliente_razon_social, observaciones').is('documento_firmado_url', null).order('created_at', { ascending: false }),
-    supabase.from('facturas').select('total, created_at, fecha, estado, pagada, statuses, fecha_pago, es_recurrente, frecuencia, cliente_razon_social, numero, descripcion').order('created_at', { ascending: false }),
-    supabase.from('gastos').select('total, base_imponible, iva_importe, fecha, created_at, es_recurrente, frecuencia, descripcion, proveedor, numero').order('created_at', { ascending: false }),
-    supabase.from('notificaciones_historial').select('*').order('created_at', { ascending: false }).limit(5)
+    supabase.from('presupuestos').select('*').order('fecha', { ascending: false }),
+    supabase.from('albaranes').select('*').is('documento_firmado_url', null).order('fecha', { ascending: false }),
+    supabase.from('facturas').select('*').order('fecha', { ascending: false }),
+    supabase.from('gastos').select('*').order('fecha', { ascending: false }),
+    supabase.from('notificaciones_historial').select('*').order('created_at', { ascending: false }).limit(10)
   ])
 
   // Determine Date Range
@@ -34,16 +34,17 @@ async function getStats(monthFilter: string | undefined) {
   let endDate: Date | null = null
 
   if (monthFilter && monthFilter !== 'all') {
-    // Expected format: YYYY-MM
     const [year, month] = monthFilter.split('-').map(Number)
     const date = new Date(year, month - 1)
     startDate = startOfMonth(date)
     endDate = endOfMonth(date)
   }
 
-  const filterByDate = (item: any, dateField: string = 'created_at') => {
-    if (!startDate || !endDate) return true // Show all if no filter
-    const date = new Date(item[dateField])
+  const filterByDate = (item: any, dateField: string = 'fecha') => {
+    if (!startDate || !endDate) return true
+    const val = item[dateField] || item.created_at || item.fecha
+    if (!val) return false
+    const date = new Date(val)
     return date >= startDate && date <= endDate
   }
 
@@ -51,7 +52,7 @@ async function getStats(monthFilter: string | undefined) {
   const filteredPresupuestos = presupuestos?.filter(d => filterByDate(d)) || []
   const filteredAlbaranes = albaranes?.filter(d => filterByDate(d)) || []
   const filteredFacturas = facturas?.filter(d => filterByDate(d)) || []
-  const filteredGastos = gastos?.filter(d => filterByDate(d, 'fecha')) || [] // Gastos often use 'fecha'
+  const filteredGastos = gastos?.filter(d => filterByDate(d, 'fecha')) || []
 
   // Calculate totals
   const totalPresupuestos = filteredPresupuestos.reduce((acc: number, curr: any) => acc + (Number(curr.total) || 0), 0)

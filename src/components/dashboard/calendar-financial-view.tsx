@@ -63,12 +63,17 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
         const dateStr = item.fecha || item.created_at
         if (!dateStr) return occurrences
         
-        const startDate = parseISO(dateStr)
+        // Normalize the base date
+        const baseDate = parseISO(dateStr)
+        const datePart = format(baseDate, 'yyyy-MM-dd')
 
         // For Invoices, determine if paid
         let finalType = type
         if (type === 'ingreso_pendiente') {
-            const isPaid = item.estado === 'PAGADA' || item.pagada === true || item.statuses?.includes('pagada')
+            const isPaid = item.estado?.toUpperCase() === 'PAGADA' || 
+                           item.estado?.toLowerCase() === 'pagada' || 
+                           item.pagada === true || 
+                           item.statuses?.some((s: string) => s.toLowerCase() === 'pagada')
             if (isPaid) finalType = 'ingreso_pagado'
         }
 
@@ -76,7 +81,7 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
         if (!item.es_recurrente || item.frecuencia === 'unico') {
             occurrences.push({
                 id: item.id,
-                fecha: dateStr,
+                fecha: datePart, // Use only date part
                 total: item.total || 0,
                 descripcion: item.descripcion || item.observaciones || '',
                 empresa: item.cliente_razon_social || item.proveedor || item.cliente || 'S/N',
@@ -86,15 +91,16 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
             return occurrences
         }
 
-        // For recurring items, project them up to a reasonable future (e.g. 2 years)
-        const limitDate = addYears(startDate, 2)
-        let checkDate = startDate
+        // For recurring items
+        const limitDate = addYears(baseDate, 1)
+        let checkDate = baseDate
 
         while (isBefore(checkDate, limitDate)) {
+            // Check if checkDate falls within the range roughly
             if (isAfter(checkDate, subMonths(rangeStart, 1)) && isBefore(checkDate, addMonths(rangeEnd, 1))) {
                 occurrences.push({
                     id: `${item.id}-${checkDate.getTime()}`,
-                    fecha: checkDate.toISOString(),
+                    fecha: format(checkDate, 'yyyy-MM-dd'),
                     total: item.total || 0,
                     descripcion: item.descripcion || 'Recurrente',
                     empresa: item.cliente_razon_social || item.proveedor || item.cliente || 'S/N',
@@ -145,7 +151,8 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
     }, [invoices, expenses, budgets, deliveryNotes, calendarStart, calendarEnd])
 
     const getDayData = (day: Date) => {
-        const dayTrans = allTransactions.filter(t => isSameDay(parseISO(t.fecha), day))
+        const dayStr = format(day, 'yyyy-MM-dd')
+        const dayTrans = allTransactions.filter(t => t.fecha === dayStr)
         const incomePaid = dayTrans.filter(t => t.tipo === 'ingreso_pagado').reduce((acc, t) => acc + t.total, 0)
         const incomePending = dayTrans.filter(t => t.tipo === 'ingreso_pendiente').reduce((acc, t) => acc + t.total, 0)
         const expense = dayTrans.filter(t => t.tipo === 'gasto').reduce((acc, t) => acc + t.total, 0)

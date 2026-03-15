@@ -40,6 +40,10 @@ export default function GastosPage() {
     const [isUploadOpen, setIsUploadOpen] = useState(false)
     const [isManualOpen, setIsManualOpen] = useState(false)
 
+    // Edit state
+    const [isEditOpen, setIsEditOpen] = useState(false)
+    const [editForm, setEditForm] = useState<any>(null)
+
     // File Upload state
     const [file, setFile] = useState<File | null>(null)
     const [uploading, setUploading] = useState(false)
@@ -58,7 +62,7 @@ export default function GastosPage() {
         frecuencia: 'unico' as 'unico' | 'semanal' | 'mensual' | 'anual'
     })
 
-    const { gastos, totalCount, stats, isLoading, createExpense, deleteExpense } = useExpenses({
+    const { gastos, totalCount, stats, isLoading, createExpense, deleteExpense, updateExpense } = useExpenses({
         page,
         pageSize,
         search,
@@ -75,6 +79,15 @@ export default function GastosPage() {
             onSuccess: () => {
                 setIsManualOpen(false)
                 setManualForm({ fecha: new Date().toISOString().split('T')[0], numero: '', referencia_pedido: '', proveedor: '', descripcion: '', base_imponible: '', iva_importe: '', total: '', es_recurrente: false, frecuencia: 'unico' })
+            }
+        })
+    }
+
+    const handleUpdate = () => {
+        updateExpense.mutate(editForm, {
+            onSuccess: () => {
+                setIsEditOpen(false)
+                setEditForm(null)
             }
         })
     }
@@ -360,6 +373,22 @@ export default function GastosPage() {
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
+                                                className="h-8 w-8 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                                                onClick={() => {
+                                                    setEditForm({
+                                                        ...gasto,
+                                                        base_imponible: gasto.base_imponible.toString(),
+                                                        iva_importe: gasto.iva_importe.toString(),
+                                                        total: gasto.total.toString()
+                                                    })
+                                                    setIsEditOpen(true)
+                                                }}
+                                            >
+                                                <PenLine className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
                                                 className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
                                                 onClick={() => {
                                                     if (confirm('¿Eliminar gasto?')) {
@@ -386,6 +415,81 @@ export default function GastosPage() {
                     <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Siguiente</Button>
                 </div>
             )}
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Editar Gasto</DialogTitle>
+                    </DialogHeader>
+                    {editForm && (
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <Label htmlFor="edit-date">Fecha</Label>
+                                    <Input id="edit-date" type="date" value={editForm.fecha} onChange={e => setEditForm({ ...editForm, fecha: e.target.value })} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit-number">Documento Nº</Label>
+                                    <Input id="edit-number" value={editForm.numero || ''} onChange={e => setEditForm({ ...editForm, numero: e.target.value })} />
+                                </div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-provider">Proveedor</Label>
+                                <Input id="edit-provider" value={editForm.proveedor} onChange={e => setEditForm({ ...editForm, proveedor: e.target.value })} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-desc">Descripción</Label>
+                                <Input id="edit-desc" value={editForm.descripcion || ''} onChange={e => setEditForm({ ...editForm, descripcion: e.target.value })} />
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                    <Label htmlFor="edit-base">Base</Label>
+                                    <Input id="edit-base" type="number" step="0.01" value={editForm.base_imponible} onChange={e => setEditForm({ ...editForm, base_imponible: e.target.value })} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit-vat">IVA</Label>
+                                    <Input id="edit-vat" type="number" step="0.01" value={editForm.iva_importe} onChange={e => setEditForm({ ...editForm, iva_importe: e.target.value })} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="edit-total">Total</Label>
+                                    <Input id="edit-total" type="number" step="0.01" value={editForm.total} onChange={e => setEditForm({ ...editForm, total: e.target.value })} />
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between p-3 border rounded-xl bg-slate-50/50">
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-slate-700">Gasto Recurrente</span>
+                                </div>
+                                <Switch
+                                    checked={editForm.es_recurrente}
+                                    onCheckedChange={(checked) => setEditForm({ ...editForm, es_recurrente: checked })}
+                                />
+                            </div>
+                            {editForm.es_recurrente && (
+                                <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <Label htmlFor="edit-frequency">Periodicidad</Label>
+                                    <Select
+                                        value={editForm.frecuencia}
+                                        onValueChange={(val: any) => setEditForm({ ...editForm, frecuencia: val })}
+                                    >
+                                        <SelectTrigger id="edit-frequency" className="rounded-xl">
+                                            <SelectValue placeholder="Seleccionar frecuencia" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="semanal">Semanal</SelectItem>
+                                            <SelectItem value="mensual">Mensual</SelectItem>
+                                            <SelectItem value="anual">Anual</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                            <Button onClick={handleUpdate} disabled={updateExpense.isPending} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl">
+                                {updateExpense.isPending ? <Loader2 className="animate-spin" /> : 'Guardar Cambios'}
+                            </Button>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
         </div>
     )

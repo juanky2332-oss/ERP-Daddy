@@ -236,14 +236,14 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                     t.tipo === 'presupuesto' ? "bg-blue-50 text-blue-700 border-blue-100" :
                                                     "bg-amber-50 text-amber-700 border-amber-100"
                                                 )}>
-                                                    <span className="truncate max-w-[45px]">
-                                                        {t.tipo === 'ingreso_pagado' ? 'Pagada' : 
-                                                         t.tipo === 'ingreso_pendiente' ? 'Pendiente' : 
-                                                         t.tipo === 'gasto' ? 'Gasto' : 
-                                                         t.tipo === 'presupuesto' ? 'Presup.' : 'Alb.'}
+                                                    <span className="truncate max-w-[35px]">
+                                                        {t.tipo === 'ingreso_pagado' ? 'Pag.' : 
+                                                         t.tipo === 'ingreso_pendiente' ? 'Pend.' : 
+                                                         t.tipo === 'gasto' ? 'Gas.' : 
+                                                         t.tipo === 'presupuesto' ? 'Pre.' : 'Alb.'}
                                                     </span>
                                                     <span className="font-mono">
-                                                        {formatCurrency(t.total).split(',')[0]}€
+                                                        {t.total.toFixed(2)}€
                                                     </span>
                                                 </div>
                                             </TooltipTrigger>

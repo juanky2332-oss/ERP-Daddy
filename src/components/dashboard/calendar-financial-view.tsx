@@ -30,18 +30,21 @@ interface Transaction {
     fecha: string
     total: number
     descripcion: string
+    empresa: string
+    referencia: string
+    tipo: 'ingreso' | 'gasto' | 'presupuesto' | 'albaran'
     es_recurrente?: boolean
     frecuencia?: 'unico' | 'semanal' | 'mensual' | 'anual'
-    tipo: 'ingreso' | 'gasto'
-    documento?: string
 }
 
 interface CalendarFinancialViewProps {
     invoices: any[]
     expenses: any[]
+    budgets?: any[]
+    deliveryNotes?: any[]
 }
 
-export function CalendarFinancialView({ invoices, expenses }: CalendarFinancialViewProps) {
+export function CalendarFinancialView({ invoices, expenses, budgets = [], deliveryNotes = [] }: CalendarFinancialViewProps) {
     const [currentDate, setCurrentDate] = useState(new Date())
 
     const monthStart = startOfMonth(currentDate)
@@ -55,22 +58,24 @@ export function CalendarFinancialView({ invoices, expenses }: CalendarFinancialV
     })
 
     // Helper to calculate occurrences of a recurring item in a given range
-    const getOccurrences = (item: any, type: 'ingreso' | 'gasto', rangeStart: Date, rangeEnd: Date) => {
+    const getOccurrences = (item: any, type: Transaction['tipo'], rangeStart: Date, rangeEnd: Date) => {
         const occurrences: Transaction[] = []
-        const startDate = parseISO(item.fecha)
+        const dateStr = item.fecha || item.created_at
+        if (!dateStr) return occurrences
+        
+        const startDate = parseISO(dateStr)
 
         // If not recurring, just check if it's in the current month-ish view
         if (!item.es_recurrente || item.frecuencia === 'unico') {
-            if (isAfter(startDate, subMonths(rangeStart, 1)) && isBefore(startDate, addMonths(rangeEnd, 1))) {
-                occurrences.push({
-                    id: item.id,
-                    fecha: item.fecha,
-                    total: item.total,
-                    descripcion: item.descripcion || item.cliente_razon_social || 'Documento',
-                    tipo: type,
-                    documento: item.numero
-                })
-            }
+            occurrences.push({
+                id: item.id,
+                fecha: dateStr,
+                total: item.total || 0,
+                descripcion: item.descripcion || item.observaciones || '',
+                empresa: item.cliente_razon_social || item.proveedor || item.cliente || 'S/N',
+                referencia: item.numero || 'S/R',
+                tipo: type
+            })
             return occurrences
         }
 
@@ -83,12 +88,13 @@ export function CalendarFinancialView({ invoices, expenses }: CalendarFinancialV
                 occurrences.push({
                     id: `${item.id}-${checkDate.getTime()}`,
                     fecha: checkDate.toISOString(),
-                    total: item.total,
-                    descripcion: item.descripcion || item.cliente_razon_social || 'Recurrente',
+                    total: item.total || 0,
+                    descripcion: item.descripcion || 'Recurrente',
+                    empresa: item.cliente_razon_social || item.proveedor || item.cliente || 'S/N',
+                    referencia: item.numero || 'S/R',
                     es_recurrente: true,
                     frecuencia: item.frecuencia,
-                    tipo: type,
-                    documento: item.numero
+                    tipo: type
                 })
             }
 
@@ -104,20 +110,10 @@ export function CalendarFinancialView({ invoices, expenses }: CalendarFinancialV
     const allTransactions = useMemo(() => {
         const trans: Transaction[] = []
 
-        // Invoices (only if paid for current, or all if projected? User said show income ONLY when paid)
-        // For forecast, maybe we should show paid ones on payment date.
+        // Invoices
         invoices.forEach(inv => {
-            // "Muestra los ingresos en el calendario única y exclusivamente cuando la factura cambie su estado a Pagada"
-            if (inv.statuses?.includes('pagada') && inv.fecha_pago) {
-                trans.push({
-                    id: inv.id,
-                    fecha: inv.fecha_pago,
-                    total: inv.total,
-                    descripcion: inv.cliente_razon_social,
-                    tipo: 'ingreso',
-                    documento: inv.numero
-                })
-            }
+            const occs = getOccurrences(inv, 'ingreso', calendarStart, calendarEnd)
+            trans.push(...occs)
         })
 
         // Expenses
@@ -126,8 +122,20 @@ export function CalendarFinancialView({ invoices, expenses }: CalendarFinancialV
             trans.push(...occs)
         })
 
+        // Budgets
+        budgets.forEach(bud => {
+            const occs = getOccurrences(bud, 'presupuesto', calendarStart, calendarEnd)
+            trans.push(...occs)
+        })
+
+        // Delivery Notes
+        deliveryNotes.forEach(dn => {
+            const occs = getOccurrences(dn, 'albaran', calendarStart, calendarEnd)
+            trans.push(...occs)
+        })
+
         return trans
-    }, [invoices, expenses, calendarStart, calendarEnd])
+    }, [invoices, expenses, budgets, deliveryNotes, calendarStart, calendarEnd])
 
     const getDayData = (day: Date) => {
         const dayTrans = allTransactions.filter(t => isSameDay(parseISO(t.fecha), day))
@@ -144,8 +152,8 @@ export function CalendarFinancialView({ invoices, expenses }: CalendarFinancialV
                         <CalendarIcon className="h-5 w-5" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Previsión de Tesorería</h3>
-                        <p className="text-xs font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Calendario Interactivo</p>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Control Financiero Global</h3>
+                        <p className="text-xs font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Reflejo de actividad ERP</p>
                     </div>
                 </div>
 
@@ -188,7 +196,7 @@ export function CalendarFinancialView({ invoices, expenses }: CalendarFinancialV
                         <div
                             key={day.toString()}
                             className={cn(
-                                "min-h-[120px] p-2 bg-white flex flex-col gap-1 transition-all group hover:z-10 relative",
+                                "min-h-[140px] p-2 bg-white flex flex-col gap-1 transition-all group hover:z-10 relative",
                                 !isCurrentMonth && "bg-slate-50/50 grayscale-[0.5] opacity-50",
                                 isToday && "ring-2 ring-inset ring-slate-900 shadow-lg"
                             )}
@@ -200,77 +208,82 @@ export function CalendarFinancialView({ invoices, expenses }: CalendarFinancialV
                                 {format(day, 'd')}
                             </span>
 
-                            <div className="flex-1 space-y-1.5 overflow-hidden">
-                                {income > 0 && (
-                                    <TooltipProvider>
-                                        <Tooltip>
+                            <div className="flex-1 space-y-1 overflow-y-auto max-h-[80px] custom-scrollbar">
+                                {transactions.map((t) => (
+                                    <TooltipProvider key={t.id}>
+                                        <Tooltip delayDuration={0}>
                                             <TooltipTrigger asChild>
-                                                <div className="bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg py-1.5 px-2 flex items-center justify-between animate-in fade-in zoom-in duration-300">
-                                                    <TrendingUp className="h-3 w-3 shrink-0" />
-                                                    <span className="text-[10px] font-black font-mono">+{formatCurrency(income)}</span>
+                                                <div className={cn(
+                                                    "text-[9px] font-bold px-1.5 py-0.5 rounded cursor-help flex items-center justify-between border",
+                                                    t.tipo === 'ingreso' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                                    t.tipo === 'gasto' ? "bg-rose-50 text-rose-700 border-rose-100" :
+                                                    t.tipo === 'presupuesto' ? "bg-blue-50 text-blue-700 border-blue-100" :
+                                                    "bg-amber-50 text-amber-700 border-amber-100"
+                                                )}>
+                                                    <span className="truncate max-w-[40px]">
+                                                        {t.tipo === 'ingreso' ? 'Ingreso' : 
+                                                         t.tipo === 'gasto' ? 'Gasto' : 
+                                                         t.tipo === 'presupuesto' ? 'Presup.' : 'Alb.'}
+                                                    </span>
+                                                    <span className="font-mono">
+                                                        {formatCurrency(t.total).split(',')[0]}€
+                                                    </span>
                                                 </div>
                                             </TooltipTrigger>
-                                            <TooltipContent className="bg-slate-900 text-white border-0 rounded-xl p-3 shadow-2xl">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-2">Ingresos del día</p>
-                                                <div className="space-y-2">
-                                                    {transactions.filter(t => t.tipo === 'ingreso').map(t => (
-                                                        <div key={t.id} className="flex justify-between items-center gap-4 border-t border-white/10 pt-1">
-                                                            <span className="text-[10px] font-medium opacity-80">{t.descripcion}</span>
-                                                            <span className="text-[10px] font-bold font-mono">+{formatCurrency(t.total)}</span>
-                                                        </div>
-                                                    ))}
+                                            <TooltipContent side="top" className="bg-slate-900 text-white border-0 rounded-xl p-3 shadow-2xl z-50">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center justify-between gap-4">
+                                                        <span className={cn(
+                                                            "text-[9px] font-black uppercase tracking-widest",
+                                                            t.tipo === 'ingreso' ? "text-emerald-400" : 
+                                                            t.tipo === 'gasto' ? "text-rose-400" : 
+                                                            t.tipo === 'presupuesto' ? "text-blue-400" : "text-amber-400"
+                                                        )}>
+                                                            {t.tipo.toUpperCase()}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold font-mono">
+                                                            {formatCurrency(t.total)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-px bg-white/10 my-1" />
+                                                    <p className="text-[11px] font-black">{t.empresa}</p>
+                                                    <p className="text-[10px] font-medium text-slate-400">Ref: {t.referencia}</p>
+                                                    {t.descripcion && (
+                                                        <p className="text-[10px] italic text-slate-500 mt-1 max-w-[200px]">{t.descripcion}</p>
+                                                    )}
+                                                    {t.es_recurrente && (
+                                                        <p className="text-[8px] font-bold text-primary uppercase mt-1">● Recurrente ({t.frecuencia})</p>
+                                                    )}
                                                 </div>
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
-                                )}
-
-                                {expense > 0 && (
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <div className="bg-rose-50 text-rose-700 border border-rose-100 rounded-lg py-1.5 px-2 flex items-center justify-between animate-in fade-in zoom-in duration-300">
-                                                    <TrendingDown className="h-3 w-3 shrink-0" />
-                                                    <span className="text-[10px] font-black font-mono">-{formatCurrency(expense)}</span>
-                                                </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="bg-slate-900 text-white border-0 rounded-xl p-3 shadow-2xl">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-2">Gastos del día</p>
-                                                <div className="space-y-2">
-                                                    {transactions.filter(t => t.tipo === 'gasto').map(t => (
-                                                        <div key={t.id} className="flex justify-between items-center gap-4 border-t border-white/10 pt-1">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[10px] font-medium opacity-80">{t.descripcion}</span>
-                                                                {t.es_recurrente && (
-                                                                    <span className="text-[8px] font-bold uppercase text-rose-400 tracking-tighter">● Recurrente ({t.frecuencia})</span>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-[10px] font-bold font-mono">-{formatCurrency(t.total)}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                )}
+                                ))}
                             </div>
                         </div>
                     )
                 })}
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-6 items-center border-t border-slate-100 pt-6">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]"></div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Ingresos Pagados</span>
+            <div className="mt-8 flex flex-wrap gap-4 items-center border-t border-slate-100 pt-6">
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded bg-emerald-500"></div>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Facturas</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]"></div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Gastos Directos / Recurrentes</span>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded bg-rose-500"></div>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Gastos</span>
                 </div>
-                <div className="ml-auto flex items-center gap-2 text-slate-400">
-                    <Info className="h-4 w-4" />
-                    <span className="text-[10px] font-bold italic tracking-tight">Pasa el cursor sobre los indicadores para ver detalles</span>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded bg-blue-500"></div>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Presupuestos</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded bg-amber-500"></div>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Albaranes</span>
+                </div>
+                <div className="ml-auto text-[9px] font-bold italic text-slate-400">
+                    * Todos los documentos se muestran por fecha de creación/emisión
                 </div>
             </div>
         </Card>

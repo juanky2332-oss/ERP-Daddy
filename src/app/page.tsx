@@ -22,9 +22,9 @@ async function getStats(monthFilter: string | undefined) {
     { data: gastos },
     { data: historial }
   ] = await Promise.all([
-    supabase.from('presupuestos').select('total, created_at').order('created_at', { ascending: false }),
-    supabase.from('albaranes').select('total, created_at').is('documento_firmado_url', null).order('created_at', { ascending: false }),
-    supabase.from('facturas').select('total, created_at, estado, pagada, statuses, fecha_pago, es_recurrente, frecuencia, cliente_razon_social, numero').order('created_at', { ascending: false }),
+    supabase.from('presupuestos').select('total, created_at, numero, cliente_razon_social, descripcion').order('created_at', { ascending: false }),
+    supabase.from('albaranes').select('total, created_at, numero, cliente_razon_social, observaciones').is('documento_firmado_url', null).order('created_at', { ascending: false }),
+    supabase.from('facturas').select('total, created_at, estado, pagada, statuses, fecha_pago, es_recurrente, frecuencia, cliente_razon_social, numero, descripcion').order('created_at', { ascending: false }),
     supabase.from('gastos').select('total, base_imponible, iva_importe, fecha, created_at, es_recurrente, frecuencia, descripcion, proveedor, numero').order('created_at', { ascending: false }),
     supabase.from('notificaciones_historial').select('*').order('created_at', { ascending: false }).limit(5)
   ])
@@ -84,7 +84,9 @@ async function getStats(monthFilter: string | undefined) {
     },
     chartData: {
       facturas: facturas || [],
-      gastos: gastos || []
+      gastos: gastos || [],
+      presupuestos: presupuestos || [],
+      albaranes: albaranes || []
     },
     historial: historial || []
   }
@@ -232,6 +234,8 @@ export default async function Dashboard({ searchParams }: { searchParams: { mont
       <CalendarFinancialView
         invoices={stats.chartData.facturas}
         expenses={stats.chartData.gastos}
+        budgets={stats.chartData.presupuestos}
+        deliveryNotes={stats.chartData.albaranes}
       />
 
       {/* Chart & Insights Section */}

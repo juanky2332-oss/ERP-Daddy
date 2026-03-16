@@ -277,7 +277,7 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                             t.tipo === 'ingreso_pendiente' ? "bg-orange-50 text-orange-700 border-orange-100" :
                                                             t.tipo === 'gasto' ? "bg-rose-50 text-rose-700 border-rose-100" :
                                                             t.tipo === 'presupuesto' ? "bg-blue-50 text-blue-700 border-blue-100" :
-                                                            "bg-amber-50 text-amber-700 border-amber-100",
+                                                            "bg-purple-50 text-purple-700 border-purple-100",
                                                             t.isForecast && "border-dashed border-2 opacity-80"
                                                         )}>
                                                             <div className="flex justify-between items-center gap-1 overflow-hidden">
@@ -314,7 +314,7 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                                         t.tipo === 'ingreso_pagado' ? "text-emerald-400" : 
                                                                         t.tipo === 'ingreso_pendiente' ? "text-orange-400" : 
                                                                         t.tipo === 'gasto' ? "text-rose-400" : 
-                                                                        t.tipo === 'presupuesto' ? "text-blue-400" : "text-amber-400"
+                                                                        t.tipo === 'presupuesto' ? "text-blue-400" : "text-purple-400"
                                                                     )}>
                                                                         {t.tipo.replace('_', ' ')}
                                                                     </span>
@@ -400,8 +400,10 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                 <span className="truncate max-w-[160px] flex items-center gap-2">
                                                     <span className={cn(
                                                         "h-1.5 w-1.5 rounded-full shrink-0",
-                                                        t.tipo.includes('ingreso') ? "bg-emerald-500" : 
-                                                        t.tipo === 'presupuesto' ? "bg-blue-500" : "bg-rose-500"
+                                                        t.tipo === 'ingreso_pagado' ? "bg-emerald-500" : 
+                                                        t.tipo === 'ingreso_pendiente' ? "bg-orange-500" : 
+                                                        t.tipo === 'gasto' ? "bg-rose-500" : 
+                                                        t.tipo === 'presupuesto' ? "bg-blue-500" : "bg-purple-500"
                                                     )} />
                                                     {t.isForecast ? '📋 ' : ''}
                                                     {t.tipo === 'gasto' 

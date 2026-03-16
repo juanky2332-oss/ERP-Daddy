@@ -91,7 +91,8 @@ export interface Factura {
     pagada: boolean
     fecha_pago?: string
     es_recurrente: boolean
-    frecuencia?: 'unico' | 'semanal' | 'mensual' | 'anual'
+    frecuencia?: 'unico' | 'semanal' | 'quincenal' | 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'
+    fecha_limite_recurrencia?: string
     pdf_url?: string
     descripcion?: string
     base_imponible?: number

@@ -17,7 +17,8 @@ export interface Gasto {
     total: number
     factura_url?: string
     es_recurrente: boolean
-    frecuencia?: 'unico' | 'semanal' | 'mensual' | 'anual'
+    frecuencia?: 'unico' | 'semanal' | 'quincenal' | 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'
+    fecha_limite_recurrencia?: string
     created_at: string
 }
 
@@ -121,7 +122,8 @@ export function useExpenses({
                 iva_importe: parseFloat(data.iva_importe) || 0,
                 total: parseFloat(data.total) || 0,
                 es_recurrente: !!data.es_recurrente,
-                frecuencia: data.frecuencia || 'unico'
+                frecuencia: data.frecuencia || 'unico',
+                fecha_limite_recurrencia: data.fecha_limite_recurrencia || null
             }
             const { error } = await supabase.from('gastos').update(payload).eq('id', data.id)
             if (error) throw error
@@ -143,7 +145,8 @@ export function useExpenses({
                 iva_importe: parseFloat(data.iva_importe) || 0,
                 total: parseFloat(data.total) || 0,
                 es_recurrente: !!data.es_recurrente,
-                frecuencia: data.frecuencia || 'unico'
+                frecuencia: data.frecuencia || 'unico',
+                fecha_limite_recurrencia: data.fecha_limite_recurrencia || null
             }
             const { error } = await supabase.from('gastos').insert(payload)
             if (error) throw error

@@ -40,7 +40,8 @@ const documentSchema = z.object({
     lineas: z.array(lineItemSchema).min(1, 'Al menos una línea es requerida'),
     iva_porcentaje: z.coerce.number().min(0).default(21),
     es_recurrente: z.boolean().default(false),
-    frecuencia: z.enum(['unico', 'semanal', 'mensual', 'anual']).default('unico')
+    frecuencia: z.enum(['unico', 'semanal', 'quincenal', 'mensual', 'bimestral', 'trimestral', 'semestral', 'anual']).default('unico'),
+    fecha_limite_recurrencia: z.date().optional().nullable()
 })
 
 type formValues = z.infer<typeof documentSchema>
@@ -70,6 +71,7 @@ export function DocumentForm({ type, initialData, onSubmit, onGeneratePdf }: Doc
             iva_porcentaje: 21,
             es_recurrente: false,
             frecuencia: 'unico',
+            fecha_limite_recurrencia: null,
             ...initialData
         }
     })
@@ -420,7 +422,7 @@ export function DocumentForm({ type, initialData, onSubmit, onGeneratePdf }: Doc
                         </div>
 
                         {form.watch('es_recurrente') && (
-                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <FormField
                                     control={form.control}
                                     name="frecuencia"
@@ -435,10 +437,56 @@ export function DocumentForm({ type, initialData, onSubmit, onGeneratePdf }: Doc
                                                 </FormControl>
                                                 <SelectContent className="rounded-xl">
                                                     <SelectItem value="semanal">Semanal</SelectItem>
+                                                    <SelectItem value="quincenal">Quincenal</SelectItem>
                                                     <SelectItem value="mensual">Mensual</SelectItem>
+                                                    <SelectItem value="bimestral">Bimestral (Cada 2 meses)</SelectItem>
+                                                    <SelectItem value="trimestral">Trimestral (Cada 3 meses)</SelectItem>
+                                                    <SelectItem value="semestral">Semestral (Cada 6 meses)</SelectItem>
                                                     <SelectItem value="anual">Anual</SelectItem>
                                                 </SelectContent>
                                             </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="fecha_limite_recurrencia"
+                                    render={({ field }: { field: any }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="text-[10px] font-bold text-gray-500 uppercase">Hasta Fecha (Límite)</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button
+                                                            variant={"outline"}
+                                                            className={cn(
+                                                                "h-11 rounded-xl text-left font-normal",
+                                                                !field.value && "text-muted-foreground"
+                                                            )}
+                                                        >
+                                                            {field.value ? (
+                                                                format(field.value, "PPP", { locale: es })
+                                                            ) : (
+                                                                <span>Sin límite</span>
+                                                            )}
+                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                        </Button>
+                                                    </FormControl>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={field.value}
+                                                        onSelect={field.onChange}
+                                                        disabled={(date) =>
+                                                            date < new Date() || date < form.getValues('fecha')
+                                                        }
+                                                        initialFocus
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
                                             <FormMessage />
                                         </FormItem>
                                     )}

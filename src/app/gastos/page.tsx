@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
     Table,
     TableBody,
@@ -24,6 +24,7 @@ import { SortableHeader } from '@/components/ui/sortable-header'
 import { useGlobalFilter } from '@/components/providers/global-filter-provider'
 import { GlobalDateSelector } from '@/components/ui/global-date-selector'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useExpenses } from '@/hooks/use-expenses'
 import { Card } from '@/components/ui/card'
 import { DocumentPreviewModal } from '@/components/documents/document-preview-modal'
@@ -59,9 +60,11 @@ export default function GastosPage() {
         iva_importe: '',
         total: '',
         es_recurrente: false,
-        frecuencia: 'unico' as 'unico' | 'semanal' | 'mensual' | 'anual'
+        frecuencia: 'unico' as 'unico' | 'semanal' | 'quincenal' | 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual',
+        fecha_limite_recurrencia: ''
     })
 
+    const searchParams = useSearchParams()
     const { gastos, totalCount, stats, isLoading, createExpense, deleteExpense, updateExpense } = useExpenses({
         page,
         pageSize,
@@ -71,6 +74,39 @@ export default function GastosPage() {
         sortConfig
     })
 
+    // Handle template or edit from URL
+    useMemo(() => {
+        const templateId = searchParams.get('template')
+        const targetDate = searchParams.get('date')
+        const editId = searchParams.get('edit')
+
+        if (editId && gastos.length > 0 && !isEditOpen) {
+            const itemToEdit = gastos.find(g => g.id === editId)
+            if (itemToEdit) {
+                setEditForm(itemToEdit)
+                setIsEditOpen(true)
+            }
+        } else if (templateId && targetDate && gastos.length > 0 && !isManualOpen) {
+            const template = gastos.find(g => g.id === templateId)
+            if (template) {
+                setManualForm({
+                    fecha: targetDate,
+                    numero: '', // New number
+                    referencia_pedido: template.referencia_pedido || '',
+                    proveedor: template.proveedor,
+                    descripcion: template.descripcion || '',
+                    base_imponible: template.base_imponible.toString(),
+                    iva_importe: template.iva_importe.toString(),
+                    total: template.total.toString(),
+                    es_recurrente: false, // This specific one is the realization
+                    frecuencia: 'unico',
+                    fecha_limite_recurrencia: ''
+                })
+                setIsManualOpen(true)
+            }
+        }
+    }, [searchParams, gastos, isManualOpen, isEditOpen])
+
     const totalPages = Math.ceil(totalCount / pageSize)
 
     // Mutation Wrappers
@@ -78,7 +114,7 @@ export default function GastosPage() {
         createExpense.mutate(manualForm, {
             onSuccess: () => {
                 setIsManualOpen(false)
-                setManualForm({ fecha: new Date().toISOString().split('T')[0], numero: '', referencia_pedido: '', proveedor: '', descripcion: '', base_imponible: '', iva_importe: '', total: '', es_recurrente: false, frecuencia: 'unico' })
+                setManualForm({ fecha: new Date().toISOString().split('T')[0], numero: '', referencia_pedido: '', proveedor: '', descripcion: '', base_imponible: '', iva_importe: '', total: '', es_recurrente: false, frecuencia: 'unico', fecha_limite_recurrencia: '' })
             }
         })
     }
@@ -195,22 +231,32 @@ export default function GastosPage() {
                                             />
                                         </div>
                                         {manualForm.es_recurrente && (
-                                            <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                <Label htmlFor="frequency">Periodicidad</Label>
-                                                <Select
-                                                    value={manualForm.frecuencia}
-                                                    onValueChange={(val: any) => setManualForm({ ...manualForm, frecuencia: val })}
-                                                >
-                                                    <SelectTrigger id="frequency" className="rounded-xl">
-                                                        <SelectValue placeholder="Seleccionar frecuencia" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
-                                                        <SelectItem value="semanal">Semanal</SelectItem>
-                                                        <SelectItem value="mensual">Mensual</SelectItem>
-                                                        <SelectItem value="anual">Anual</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                                            <>
+                                                <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <Label htmlFor="frequency">Periodicidad</Label>
+                                                    <Select
+                                                        value={manualForm.frecuencia}
+                                                        onValueChange={(val: any) => setManualForm({ ...manualForm, frecuencia: val })}
+                                                    >
+                                                        <SelectTrigger id="frequency" className="rounded-xl">
+                                                            <SelectValue placeholder="Seleccionar frecuencia" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="rounded-xl">
+                                                            <SelectItem value="semanal">Semanal</SelectItem>
+                                                            <SelectItem value="quincenal">Quincenal</SelectItem>
+                                                            <SelectItem value="mensual">Mensual</SelectItem>
+                                                            <SelectItem value="bimestral">Bimestral (Cada 2 meses)</SelectItem>
+                                                            <SelectItem value="trimestral">Trimestral (Cada 3 meses)</SelectItem>
+                                                            <SelectItem value="semestral">Semestral (Cada 6 meses)</SelectItem>
+                                                            <SelectItem value="anual">Anual</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="limit-date">Hasta Fecha (Límite)</Label>
+                                                    <Input id="limit-date" type="date" value={manualForm.fecha_limite_recurrencia} onChange={e => setManualForm({ ...manualForm, fecha_limite_recurrencia: e.target.value })} />
+                                                </div>
+                                            </>
                                         )}
                                         <Button onClick={handleCreateManual} disabled={createExpense.isPending} className="w-full mt-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl">
                                             {createExpense.isPending ? <Loader2 className="animate-spin" /> : 'Guardar Gasto'}
@@ -466,22 +512,32 @@ export default function GastosPage() {
                                 />
                             </div>
                             {editForm.es_recurrente && (
-                                <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <Label htmlFor="edit-frequency">Periodicidad</Label>
-                                    <Select
-                                        value={editForm.frecuencia}
-                                        onValueChange={(val: any) => setEditForm({ ...editForm, frecuencia: val })}
-                                    >
-                                        <SelectTrigger id="edit-frequency" className="rounded-xl">
-                                            <SelectValue placeholder="Seleccionar frecuencia" />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="semanal">Semanal</SelectItem>
-                                            <SelectItem value="mensual">Mensual</SelectItem>
-                                            <SelectItem value="anual">Anual</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <>
+                                    <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <Label htmlFor="edit-frequency">Periodicidad</Label>
+                                        <Select
+                                            value={editForm.frecuencia}
+                                            onValueChange={(val: any) => setEditForm({ ...editForm, frecuencia: val })}
+                                        >
+                                            <SelectTrigger id="edit-frequency" className="rounded-xl">
+                                                <SelectValue placeholder="Seleccionar frecuencia" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="semanal">Semanal</SelectItem>
+                                                <SelectItem value="quincenal">Quincenal</SelectItem>
+                                                <SelectItem value="mensual">Mensual</SelectItem>
+                                                <SelectItem value="bimestral">Bimestral (Cada 2 meses)</SelectItem>
+                                                <SelectItem value="trimestral">Trimestral (Cada 3 meses)</SelectItem>
+                                                <SelectItem value="semestral">Semestral (Cada 6 meses)</SelectItem>
+                                                <SelectItem value="anual">Anual</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-limit-date">Hasta Fecha (Límite)</Label>
+                                        <Input id="edit-limit-date" type="date" value={editForm.fecha_limite_recurrencia ? editForm.fecha_limite_recurrencia.split('T')[0] : ''} onChange={e => setEditForm({ ...editForm, fecha_limite_recurrencia: e.target.value })} />
+                                    </div>
+                                </>
                             )}
                             <Button onClick={handleUpdate} disabled={updateExpense.isPending} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl">
                                 {updateExpense.isPending ? <Loader2 className="animate-spin" /> : 'Guardar Cambios'}

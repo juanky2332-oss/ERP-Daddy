@@ -27,6 +27,9 @@ function NewFacturaContent() {
 
     // Auto-import if query params are present
     useEffect(() => {
+        const templateId = searchParams.get('template')
+        const targetDate = searchParams.get('date')
+
         if (importId && importType === 'albaran' && !initialData) {
             const fetchAndImport = async () => {
                 const { data, error } = await supabase.from('albaranes').select('*').eq('id', importId).single()
@@ -35,8 +38,23 @@ function NewFacturaContent() {
                 }
             }
             fetchAndImport()
+        } else if (templateId && !initialData) {
+            const fetchTemplate = async () => {
+                const { data, error } = await supabase.from('facturas').select('*').eq('id', templateId).single()
+                if (data && !error) {
+                    setInitialData({
+                        ...data,
+                        fecha: targetDate ? new Date(targetDate) : new Date(data.fecha),
+                        numero: nextNumber || '',
+                        es_recurrente: false, // This is the realization
+                        frecuencia: 'unico'
+                    })
+                    toast.success('Datos precargados desde previsión')
+                }
+            }
+            fetchTemplate()
         }
-    }, [importId, importType, initialData])
+    }, [importId, importType, initialData, searchParams, nextNumber])
 
     const createFacturaMutation = useMutation({
         mutationFn: async (payload: any) => {

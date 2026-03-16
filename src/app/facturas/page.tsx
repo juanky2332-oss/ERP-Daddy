@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { FileEdit } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { FileText, Trash2, Plus, Loader2, Search, AlertCircle, Check, Mail, Edit, PiggyBank } from 'lucide-react'
 import { DocumentPreviewModal } from '@/components/documents/document-preview-modal'
 import Link from 'next/link'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale/es'
 import { Badge } from '@/components/ui/badge'
@@ -50,6 +52,7 @@ export default function FacturasPage() {
     const [editingDoc, setEditingDoc] = useState<any>(null)
     const [editOpen, setEditOpen] = useState(false)
 
+    const searchParams = useSearchParams()
     const { facturas, totalCount, stats, counters, isLoading, updateInvoice } = useInvoices({
         page,
         pageSize,
@@ -61,6 +64,27 @@ export default function FacturasPage() {
     })
 
     const totalPages = Math.ceil(totalCount / pageSize)
+
+    // Handle template or edit from URL for invoices
+    useMemo(() => {
+        const templateId = searchParams.get('template')
+        const targetDate = searchParams.get('date')
+        const editId = searchParams.get('edit')
+
+        if (editId && facturas.length > 0 && !editOpen) {
+            const itemToEdit = facturas.find(i => i.id === editId)
+            if (itemToEdit) {
+                setEditingDoc(itemToEdit)
+                setEditOpen(true)
+            }
+        } else if (templateId && targetDate && facturas.length > 0 && !editOpen) {
+            const template = facturas.find(i => i.id === templateId)
+            if (template) {
+                toast.info('Para crear una nueva factura desde previsión, usa el botón "Nueva Factura". Los datos se rellenarán automáticamente.')
+                window.location.href = `/facturas/new?template=${templateId}&date=${targetDate}`
+            }
+        }
+    }, [searchParams, facturas, editOpen])
 
     const handleSort = (key: string) => {
         setSortConfig(current => ({
@@ -329,6 +353,48 @@ export default function FacturasPage() {
                                     <div className={`w-4 h-4 border-2 rounded-full ${editingDoc.statuses?.includes('pendiente') ? 'bg-orange-500 border-orange-500' : 'border-slate-300'}`} />
                                 </div>
                             </div>
+
+                            {/* Recurrence Section */}
+                            <div className="border rounded-xl p-4 bg-slate-50 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-bold text-slate-700">Factura Recurrente</span>
+                                        <span className="text-[10px] text-slate-500 text-slate-500">Se proyectará en el calendario de tesorería</span>
+                                    </div>
+                                    <Switch
+                                        checked={editingDoc.es_recurrente}
+                                        onCheckedChange={(checked) => setEditingDoc({ ...editingDoc, es_recurrente: checked })}
+                                    />
+                                </div>
+                                {editingDoc.es_recurrente && (
+                                    <>
+                                        <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <Label htmlFor="edit-frequency" className="text-xs font-bold uppercase text-slate-500">Periodicidad</Label>
+                                            <Select
+                                                value={editingDoc.frecuencia || 'unico'}
+                                                onValueChange={(val: any) => setEditingDoc({ ...editingDoc, frecuencia: val })}
+                                            >
+                                                <SelectTrigger id="edit-frequency" className="rounded-xl bg-white border-slate-200">
+                                                    <SelectValue placeholder="Seleccionar frecuencia" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="semanal">Semanal</SelectItem>
+                                                    <SelectItem value="quincenal">Quincenal</SelectItem>
+                                                    <SelectItem value="mensual">Mensual</SelectItem>
+                                                    <SelectItem value="bimestral">Bimestral (Cada 2 meses)</SelectItem>
+                                                    <SelectItem value="trimestral">Trimestral (Cada 3 meses)</SelectItem>
+                                                    <SelectItem value="semestral">Semestral (Cada 6 meses)</SelectItem>
+                                                    <SelectItem value="anual">Anual</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="edit-limit-date" className="text-xs font-bold uppercase text-slate-500">Hasta Fecha (Límite)</Label>
+                                            <Input id="edit-limit-date" type="date" value={editingDoc.fecha_limite_recurrencia ? editingDoc.fecha_limite_recurrencia.split('T')[0] : ''} onChange={e => setEditingDoc({ ...editingDoc, fecha_limite_recurrencia: e.target.value })} className="bg-white" />
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                             <div className="border rounded-xl p-4 space-y-4">
                                 <p className="font-bold text-sm text-slate-700 uppercase tracking-wide">Datos del Documento</p>
                                 <div className="grid grid-cols-2 gap-4">
@@ -370,7 +436,18 @@ export default function FacturasPage() {
                                     const ivaPct = Number(editingDoc.iva_porcentaje) || 21
                                     const ivaImporte = base * (ivaPct / 100)
                                     const total = base + ivaImporte
-                                    updateInvoice.mutate({ id: editingDoc.id, fecha: editingDoc.fecha, pedido_referencia: editingDoc.pedido_referencia, observaciones: editingDoc.observaciones, lineas, base_imponible: base, iva_importe: ivaImporte, total }, { onSuccess: () => setEditOpen(false) })
+                                    updateInvoice.mutate({ 
+                                        id: editingDoc.id, 
+                                        fecha: editingDoc.fecha, 
+                                        pedido_referencia: editingDoc.pedido_referencia, 
+                                        observaciones: editingDoc.observaciones, 
+                                        lineas, 
+                                        base_imponible: base, 
+                                        iva_importe: ivaImporte, 
+                                        total,
+                                        es_recurrente: editingDoc.es_recurrente,
+                                        frecuencia: editingDoc.frecuencia || 'unico'
+                                    }, { onSuccess: () => setEditOpen(false) })
                                 }}>Guardar Cambios</Button>
                             </div>
                         </div>

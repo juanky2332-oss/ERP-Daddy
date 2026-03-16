@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
     Table,
     TableBody,
@@ -24,13 +24,14 @@ import { SortableHeader } from '@/components/ui/sortable-header'
 import { useGlobalFilter } from '@/components/providers/global-filter-provider'
 import { GlobalDateSelector } from '@/components/ui/global-date-selector'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useExpenses } from '@/hooks/use-expenses'
 import { Card } from '@/components/ui/card'
 import { DocumentPreviewModal } from '@/components/documents/document-preview-modal'
 import { cn, formatCurrency } from '@/lib/utils'
 
 export default function GastosPage() {
+    const router = useRouter()
     const { month, year } = useGlobalFilter()
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState('')
@@ -74,8 +75,8 @@ export default function GastosPage() {
         sortConfig
     })
 
-    // Handle template or edit from URL
-    useMemo(() => {
+    // Handle template or edit from URL - Using useEffect to handle side effects and clean up URL
+    useEffect(() => {
         const templateId = searchParams.get('template')
         const targetDate = searchParams.get('date')
         const editId = searchParams.get('edit')
@@ -85,6 +86,10 @@ export default function GastosPage() {
             if (itemToEdit) {
                 setEditForm(itemToEdit)
                 setIsEditOpen(true)
+                // Clear the URL parameter so it doesn't block closing
+                const params = new URLSearchParams(searchParams.toString())
+                params.delete('edit')
+                router.replace(`/gastos?${params.toString()}`, { scroll: false })
             }
         } else if (templateId && targetDate && gastos.length > 0 && !isManualOpen) {
             const template = gastos.find(g => g.id === templateId)
@@ -103,9 +108,14 @@ export default function GastosPage() {
                     fecha_limite_recurrencia: ''
                 })
                 setIsManualOpen(true)
+                // Clear the URL parameters
+                const params = new URLSearchParams(searchParams.toString())
+                params.delete('template')
+                params.delete('date')
+                router.replace(`/gastos?${params.toString()}`, { scroll: false })
             }
         }
-    }, [searchParams, gastos, isManualOpen, isEditOpen])
+    }, [searchParams, gastos, isManualOpen, isEditOpen, router])
 
     const totalPages = Math.ceil(totalCount / pageSize)
 

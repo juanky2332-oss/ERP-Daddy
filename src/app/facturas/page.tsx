@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { FileEdit } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -42,6 +42,7 @@ import { Switch } from "@/components/ui/switch"
 import { useInvoices } from '@/hooks/use-invoices'
 
 export default function FacturasPage() {
+    const router = useRouter()
     const { month, year } = useGlobalFilter()
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState('')
@@ -66,7 +67,7 @@ export default function FacturasPage() {
     const totalPages = Math.ceil(totalCount / pageSize)
 
     // Handle template or edit from URL for invoices
-    useMemo(() => {
+    useEffect(() => {
         const templateId = searchParams.get('template')
         const targetDate = searchParams.get('date')
         const editId = searchParams.get('edit')
@@ -76,15 +77,20 @@ export default function FacturasPage() {
             if (itemToEdit) {
                 setEditingDoc(itemToEdit)
                 setEditOpen(true)
+                // Clear URL to prevent stuck modals
+                const params = new URLSearchParams(searchParams.toString())
+                params.delete('edit')
+                router.replace(`/facturas?${params.toString()}`, { scroll: false })
             }
         } else if (templateId && targetDate && facturas.length > 0 && !editOpen) {
             const template = facturas.find(i => i.id === templateId)
             if (template) {
                 toast.info('Para crear una nueva factura desde previsión, usa el botón "Nueva Factura". Los datos se rellenarán automáticamente.')
-                window.location.href = `/facturas/new?template=${templateId}&date=${targetDate}`
+                // Redirecting to new page, URL will be clear there
+                router.push(`/facturas/new?template=${templateId}&date=${targetDate}`)
             }
         }
-    }, [searchParams, facturas, editOpen])
+    }, [searchParams, facturas, editOpen, router])
 
     const handleSort = (key: string) => {
         setSortConfig(current => ({

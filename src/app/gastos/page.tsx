@@ -32,7 +32,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 
 export default function GastosPage() {
     const router = useRouter()
-    const { month, year } = useGlobalFilter()
+    const { month, year, profile } = useGlobalFilter()
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState('')
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null)
@@ -144,7 +144,8 @@ export default function GastosPage() {
         try {
             const formData = new FormData()
             formData.append('file', file)
-            const result = await processExpense(formData) // Ensure this action invalidates 'gastos' query or we do it manually via a hook if needed. 
+            formData.append('profile', profile)
+            const result = await processExpense(formData)
             // Wait, processExpense is server action. Ideally we should call a hook mutation or invalidate queries here. 
             // Since processExpense is external, we can just invalidate manually.
 

@@ -10,6 +10,7 @@ import { getNextSequenceNumber } from '@/lib/sequences'
 export async function processExpense(formData: FormData) {
     const supabase = await createClient()
     const file = formData.get('file') as File
+    const profile = formData.get('profile') as string || 'personal'
 
     if (!file) {
         return { success: false, error: 'No se recibió ningún archivo' }
@@ -71,7 +72,8 @@ export async function processExpense(formData: FormData) {
                 ? (Number(ocrData.base_imponible) || 0) + (Number(ocrData.iva_importe) || 0)
                 : (Number(ocrData.total) || 0),
             factura_url: publicUrl,
-            referencia: ocrData.numero_pedido_ref || ''
+            referencia: ocrData.numero_pedido_ref || '',
+            perfil: profile
         }
 
         const { error: dbError } = await supabase
@@ -94,6 +96,7 @@ export async function processExpense(formData: FormData) {
 export async function uploadSignedAlbaranAction(formData: FormData) {
     const supabase = await createClient()
     const file = formData.get('file') as File
+    const profile = formData.get('profile') as string || 'personal'
 
     if (!file) {
         return { success: false, error: 'No se recibió ningún archivo' }
@@ -134,7 +137,8 @@ export async function uploadSignedAlbaranAction(formData: FormData) {
             total: Number(ocrData?.total) || 0,
             documento_firmado_url: publicUrl,
             estado: 'firmado',
-            statuses: ['firmado']
+            statuses: ['firmado'],
+            perfil: profile
         }
 
         const { error: dbError } = await supabase

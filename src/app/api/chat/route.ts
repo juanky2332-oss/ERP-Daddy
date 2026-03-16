@@ -202,7 +202,7 @@ function getDateRange(period: string, year?: number, month?: number) {
 
 export async function POST(req: Request) {
     try {
-        const { messages, transcript } = await req.json()
+        const { messages, transcript, profile } = await req.json()
         const supabase = await createClient()
 
         // If transcript is provided (from voice), append it as a user message
@@ -217,6 +217,9 @@ export async function POST(req: Request) {
                 {
                     role: "system",
                     content: `Eres el asistente inteligente del ERP de Flownexion, una consultoría experta en Inteligencia Artificial y automatización. Tienes acceso COMPLETO a todos los datos de la aplicación.
+
+PERFIL ACTIVO: ${profile === 'compartido' ? 'Villa Blue (Compartido)' : 'Flownexion (Particular)'}
+DEBES FILTRAR TODA LA INFORMACIÓN POR ESTE PERFIL.
 
 PRINCIPIO FUNDAMENTAL - TRANSPARENCIA ABSOLUTA:
 - NUNCA inventes datos, cifras, documentos o información que no exista en la base de datos
@@ -277,7 +280,7 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
                     let allDocs: any[] = []
 
                     if (docType === 'factura' || docType === 'all') {
-                        let query = supabase.from('facturas').select('*').order('fecha', { ascending: false }).limit(limit)
+                        let query = supabase.from('facturas').select('*').eq('perfil', profile).order('fecha', { ascending: false }).limit(limit)
                         if (args.client_name) query = query.ilike('cliente_razon_social', `%${args.client_name}%`)
                         if (args.status) query = query.eq('estado', args.status)
                         const { data } = await query
@@ -285,14 +288,14 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
                     }
 
                     if (docType === 'presupuesto' || docType === 'all') {
-                        let query = supabase.from('presupuestos').select('*').order('fecha', { ascending: false }).limit(limit)
+                        let query = supabase.from('presupuestos').select('*').eq('perfil', profile).order('fecha', { ascending: false }).limit(limit)
                         if (args.client_name) query = query.ilike('cliente_razon_social', `%${args.client_name}%`)
                         const { data } = await query
                         allDocs.push(...(data || []).map((d: any) => ({ ...d, type: 'PRESUPUESTO' })))
                     }
 
                     if (docType === 'albaran' || docType === 'all') {
-                        let query = supabase.from('albaranes').select('*').order('fecha', { ascending: false }).limit(limit)
+                        let query = supabase.from('albaranes').select('*').eq('perfil', profile).order('fecha', { ascending: false }).limit(limit)
                         if (args.client_name) query = query.ilike('cliente_razon_social', `%${args.client_name}%`)
                         const { data } = await query
                         allDocs.push(...(data || []).map((d: any) => ({ ...d, type: 'ALBARAN' })))
@@ -306,9 +309,9 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
                     const period = args.period || 'this_month'
                     const { start, end } = getDateRange(period, args.year, args.month)
 
-                    const { data: facturas } = await supabase.from('facturas').select('total, estado, pagada, statuses').gte('fecha', start.toISOString()).lte('fecha', end.toISOString())
-                    const { data: gastos } = await supabase.from('gastos').select('total, base_imponible, iva_importe').gte('fecha', start.toISOString()).lte('fecha', end.toISOString())
-                    const { data: presupuestos } = await supabase.from('presupuestos').select('total').gte('fecha', start.toISOString()).lte('fecha', end.toISOString())
+                    const { data: facturas } = await supabase.from('facturas').select('total, estado, pagada, statuses').eq('perfil', profile).gte('fecha', start.toISOString()).lte('fecha', end.toISOString())
+                    const { data: gastos } = await supabase.from('gastos').select('total, base_imponible, iva_importe').eq('perfil', profile).gte('fecha', start.toISOString()).lte('fecha', end.toISOString())
+                    const { data: presupuestos } = await supabase.from('presupuestos').select('total').eq('perfil', profile).gte('fecha', start.toISOString()).lte('fecha', end.toISOString())
 
                     const totalFacturado = facturas?.reduce((acc: number, curr: any) => acc + (Number(curr.total) || 0), 0) || 0
                     const cobrado = facturas?.filter((f: any) => f.statuses?.includes('pagada') || f.pagada).reduce((acc: number, curr: any) => acc + (Number(curr.total) || 0), 0) || 0
@@ -341,7 +344,7 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
                     // Fetch contact info separately to handle not-found gracefully
                     let contacto: any = null
                     try {
-                        const { data: c } = await supabase.from('contactos').select('*').ilike('razon_social', `%${clientName}%`).limit(1).single()
+                        const { data: c } = await supabase.from('contactos').select('*').eq('perfil', profile).ilike('razon_social', `%${clientName}%`).limit(1).single()
                         contacto = c
                     } catch { /* contact not found is ok */ }
 
@@ -353,11 +356,11 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
                         { data: gastos },
                         { data: emails }
                     ] = await Promise.all([
-                        supabase.from('facturas').select('id, numero, fecha, total, estado, pedido_referencia').ilike('cliente_razon_social', `%${clientName}%`).order('fecha', { ascending: false }).limit(10),
-                        supabase.from('presupuestos').select('id, numero, fecha, total, estado, pedido_referencia').ilike('cliente_razon_social', `%${clientName}%`).order('fecha', { ascending: false }).limit(10),
-                        supabase.from('albaranes').select('id, numero, fecha, total, estado, pedido_referencia').ilike('cliente_razon_social', `%${clientName}%`).order('fecha', { ascending: false }).limit(10),
-                        supabase.from('albaranes').select('id, numero, fecha, total, estado_vida, pedido_referencia').ilike('cliente_razon_social', `%${clientName}%`).not('documento_firmado_url', 'is', null).order('fecha', { ascending: false }).limit(10),
-                        supabase.from('gastos').select('id, numero, fecha, total, proveedor, descripcion').ilike('proveedor', `%${clientName}%`).order('fecha', { ascending: false }).limit(5),
+                        supabase.from('facturas').select('id, numero, fecha, total, estado, pedido_referencia').eq('perfil', profile).ilike('cliente_razon_social', `%${clientName}%`).order('fecha', { ascending: false }).limit(10),
+                        supabase.from('presupuestos').select('id, numero, fecha, total, estado, pedido_referencia').eq('perfil', profile).ilike('cliente_razon_social', `%${clientName}%`).order('fecha', { ascending: false }).limit(10),
+                        supabase.from('albaranes').select('id, numero, fecha, total, estado, pedido_referencia').eq('perfil', profile).ilike('cliente_razon_social', `%${clientName}%`).order('fecha', { ascending: false }).limit(10),
+                        supabase.from('albaranes').select('id, numero, fecha, total, estado_vida, pedido_referencia').eq('perfil', profile).ilike('cliente_razon_social', `%${clientName}%`).not('documento_firmado_url', 'is', null).order('fecha', { ascending: false }).limit(10),
+                        supabase.from('gastos').select('id, numero, fecha, total, proveedor, descripcion').eq('perfil', profile).ilike('proveedor', `%${clientName}%`).order('fecha', { ascending: false }).limit(5),
                         supabase.from('notificaciones_historial').select('*').or(`destinatario.ilike.%${clientName}%,asunto.ilike.%${clientName}%`).order('created_at', { ascending: false }).limit(5)
                     ] as any)
 
@@ -380,7 +383,7 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
 
                 // GET CONTACTS
                 if ((toolCall as any).function.name === 'get_contacts') {
-                    let query = supabase.from('contactos').select('*').order('razon_social', { ascending: true })
+                    let query = supabase.from('contactos').select('*').eq('perfil', profile).order('razon_social', { ascending: true })
                     if (args.search) {
                         query = query.or(`razon_social.ilike.%${args.search}%,email.ilike.%${args.search}%,cif.ilike.%${args.search}%,telefono.ilike.%${args.search}%`)
                     }
@@ -397,7 +400,7 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
                     const period = args.period || 'all_time'
                     const { start, end } = getDateRange(period, args.year, args.month)
 
-                    let query = supabase.from('gastos').select('*').order('fecha', { ascending: false })
+                    let query = supabase.from('gastos').select('*').eq('perfil', profile).order('fecha', { ascending: false })
 
                     // Only apply date filter when not all_time
                     if (period !== 'all_time') {
@@ -426,7 +429,7 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
 
                 // GET ALBARANES FIRMADOS
                 if ((toolCall as any).function.name === 'get_albaranes_firmados') {
-                    let query = supabase.from('albaranes').select('*').not('documento_firmado_url', 'is', null).order('fecha', { ascending: false })
+                    let query = supabase.from('albaranes').select('*').eq('perfil', profile).not('documento_firmado_url', 'is', null).order('fecha', { ascending: false })
 
                     if (args.client_name) {
                         query = query.ilike('cliente_razon_social', `%${args.client_name}%`)
@@ -455,7 +458,7 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
                     }
                 }
 
-                // EMAIL HISTORY
+                // EMAIL HISTORY (not filtered by profile yet as table doesn't have it, but we can filter by doc in future)
                 if ((toolCall as any).function.name === 'get_email_history') {
                     let query = supabase.from('notificaciones_historial').select('*').order('created_at', { ascending: false })
 
@@ -480,7 +483,7 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
                     let pendingData: any = {}
 
                     if (itemType === 'unpaid_invoices' || itemType === 'all') {
-                        const { data: unpaid } = await supabase.from('facturas').select('*').neq('estado', 'PAGADA').neq('pagada', true)
+                        const { data: unpaid } = await supabase.from('facturas').select('*').eq('perfil', profile).neq('estado', 'PAGADA').neq('pagada', true)
                         pendingData.unpaid_invoices = unpaid || []
                         pendingData.total_unpaid_amount = unpaid?.reduce((acc: number, curr: any) => acc + (Number(curr.total) || 0), 0) || 0
                     }
@@ -500,12 +503,12 @@ Fecha actual: ${new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 
                         { data: contactos },
                         albFirmadosResult
                     ] = await Promise.all([
-                        supabase.from('facturas').select('*').or(`numero.ilike.%${query}%,cliente_razon_social.ilike.%${query}%,pedido_referencia.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10),
-                        supabase.from('presupuestos').select('*').or(`numero.ilike.%${query}%,cliente_razon_social.ilike.%${query}%,pedido_referencia.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10),
-                        supabase.from('albaranes').select('*').or(`numero.ilike.%${query}%,cliente_razon_social.ilike.%${query}%,pedido_referencia.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10),
-                        supabase.from('gastos').select('*').or(`numero.ilike.%${query}%,proveedor.ilike.%${query}%,descripcion.ilike.%${query}%,referencia_pedido.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10),
-                        supabase.from('contactos').select('*').or(`razon_social.ilike.%${query}%,email.ilike.%${query}%,cif.ilike.%${query}%,telefono.ilike.%${query}%`).limit(10),
-                        supabase.from('albaranes').select('*').not('documento_firmado_url', 'is', null).or(`numero.ilike.%${query}%,cliente_razon_social.ilike.%${query}%,pedido_referencia.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10)
+                        supabase.from('facturas').select('*').eq('perfil', profile).or(`numero.ilike.%${query}%,cliente_razon_social.ilike.%${query}%,pedido_referencia.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10),
+                        supabase.from('presupuestos').select('*').eq('perfil', profile).or(`numero.ilike.%${query}%,cliente_razon_social.ilike.%${query}%,pedido_referencia.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10),
+                        supabase.from('albaranes').select('*').eq('perfil', profile).or(`numero.ilike.%${query}%,cliente_razon_social.ilike.%${query}%,pedido_referencia.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10),
+                        supabase.from('gastos').select('*').eq('perfil', profile).or(`numero.ilike.%${query}%,proveedor.ilike.%${query}%,descripcion.ilike.%${query}%,referencia_pedido.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10),
+                        supabase.from('contactos').select('*').eq('perfil', profile).or(`razon_social.ilike.%${query}%,email.ilike.%${query}%,cif.ilike.%${query}%,telefono.ilike.%${query}%`).limit(10),
+                        supabase.from('albaranes').select('*').eq('perfil', profile).not('documento_firmado_url', 'is', null).or(`numero.ilike.%${query}%,cliente_razon_social.ilike.%${query}%,pedido_referencia.ilike.%${query}%`).order('fecha', { ascending: false }).limit(10)
                     ] as any)
 
                     result = {

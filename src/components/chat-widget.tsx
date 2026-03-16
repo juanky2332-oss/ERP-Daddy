@@ -8,12 +8,16 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
+import { useGlobalFilter } from "@/components/providers/global-filter-provider"
+
 type Message = {
     role: 'user' | 'assistant' | 'system'
     content: string
 }
 
 export function ChatWidget() {
+    const { profile } = useGlobalFilter()
+
     const [isOpen, setIsOpen] = useState(false)
     const [messages, setMessages] = useState<Message[]>([
         { role: 'assistant', content: 'Hola, soy Flow, tu asistente inteligente de Flownexion. ¿En qué te puedo ayudar hoy?' }
@@ -60,7 +64,8 @@ export function ChatWidget() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content }))
+                    messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
+                    profile
                 })
             })
 

@@ -4,18 +4,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { Contacto } from '@/types'
 import { toast } from 'sonner'
+import { useGlobalFilter } from '@/components/providers/global-filter-provider'
 
 export function useContacts() {
     const queryClient = useQueryClient()
+    const { profile } = useGlobalFilter()
 
     const { data: contacts, isLoading, error } = useQuery({
-        queryKey: ['contacts'],
+        queryKey: ['contacts', profile],
         queryFn: async () => {
 
             // 1. Fetch contacts
             const { data: contactsData, error: contactsError } = await supabase
                 .from('contactos')
                 .select('*')
+                .eq('perfil', profile)
                 .order('razon_social')
 
             if (contactsError) throw contactsError
@@ -34,6 +37,7 @@ export function useContacts() {
             const { data: facturasData, error: facturasError } = await supabase
                 .from('facturas')
                 .select('cliente_id, total')
+                .eq('perfil', profile)
 
             if (facturasError) {
                 console.error('Error fetching invoices for totals:', facturasError)
@@ -71,9 +75,10 @@ export function useContacts() {
             const contactData = rest
 
             // 1. Insert Contact
+            const contactWithProfile = { ...contactData, perfil: profile }
             const { data: insertedContact, error } = await supabase
                 .from('contactos')
-                .insert(contactData)
+                .insert(contactWithProfile)
                 .select()
                 .single()
 

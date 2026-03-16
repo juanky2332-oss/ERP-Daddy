@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { Presupuesto } from '@/types'
 import { toast } from 'sonner'
 import { endOfMonth, startOfMonth } from 'date-fns'
+import { useGlobalFilter } from '@/components/providers/global-filter-provider'
 
 export function useBudgets({
     page = 1,
@@ -24,9 +25,10 @@ export function useBudgets({
     sortConfig?: { key: string, direction: 'asc' | 'desc' } | null
 } = {}) {
     const queryClient = useQueryClient()
+    const { profile } = useGlobalFilter()
 
     const { data, isLoading } = useQuery({
-        queryKey: ['budgets', page, pageSize, search, filter, month, year, sortConfig],
+        queryKey: ['budgets', page, pageSize, search, filter, month, year, sortConfig, profile],
         queryFn: async () => {
             // Helper to get date range
             const getDateRange = () => {
@@ -52,7 +54,10 @@ export function useBudgets({
 
             // 1. Fetch Counters efficiently (filtered by Date only)
             const fetchCounters = async () => {
-                let q = supabase.from('presupuestos').select('statuses, es_enviado, estado_vida', { count: 'exact', head: false })
+                let q = supabase.from('presupuestos')
+                    .select('statuses, es_enviado, estado_vida', { count: 'exact', head: false })
+                    .eq('perfil', profile)
+
                 if (start && end) {
                     q = q.gte('fecha', start).lte('fecha', end)
                 }
@@ -73,7 +78,9 @@ export function useBudgets({
             const counters = await fetchCounters()
 
             // 2. Main Data Query
-            let query = supabase.from('presupuestos').select('*', { count: 'exact' })
+            let query = supabase.from('presupuestos')
+                .select('*', { count: 'exact' })
+                .eq('perfil', profile)
 
             // Apply Date Filter
             if (start && end) {
@@ -110,7 +117,10 @@ export function useBudgets({
             if (error) throw error
 
             // 3. Stats (Total Ofertado vs Aceptado) - Respecting Date Filter
-            let statsQuery = supabase.from('presupuestos').select('total, statuses')
+            let statsQuery = supabase.from('presupuestos')
+                .select('total, statuses')
+                .eq('perfil', profile)
+
             if (start && end) {
                 statsQuery = statsQuery.gte('fecha', start).lte('fecha', end)
             }
@@ -150,10 +160,13 @@ export function useBudgets({
     const createBudget = useMutation({
         mutationFn: async (newBudget: Partial<Presupuesto>) => {
             // 1. Get next number
+            const year = new Date().getFullYear()
             const { data: counter, error: counterError } = await supabase
                 .from('contadores')
                 .select('ultimo_numero')
                 .eq('tipo', 'presupuesto')
+                .eq('perfil', profile)
+                .eq('anio', year)
                 .single()
 
             if (counterError && counterError.code !== 'PGRST116') {
@@ -161,13 +174,13 @@ export function useBudgets({
             }
 
             const nextNum = (counter?.ultimo_numero || 0) + 1
-            const year = new Date().getFullYear()
             const formattedNum = `P-${year}-${nextNum.toString().padStart(3, '0')}`
 
             const payload = {
                 ...newBudget,
                 numero: formattedNum,
-                fecha: newBudget.fecha || new Date().toISOString()
+                fecha: newBudget.fecha || new Date().toISOString(),
+                perfil: profile
             }
 
             // 2. Insert Budget
@@ -182,9 +195,10 @@ export function useBudgets({
             // 3. Update counter
             await supabase.from('contadores').upsert({
                 tipo: 'presupuesto',
+                perfil: profile,
                 anio: year,
                 ultimo_numero: nextNum
-            })
+            }, { onConflict: 'tipo,perfil,anio' })
 
             return data
         },

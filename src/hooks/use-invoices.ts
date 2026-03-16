@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { Factura } from '@/types'
 import { toast } from 'sonner'
 import { endOfMonth, startOfMonth } from 'date-fns'
+import { useGlobalFilter } from '@/components/providers/global-filter-provider'
 
 export function useInvoices({
     page = 1,
@@ -24,9 +25,10 @@ export function useInvoices({
     sortConfig?: { key: string, direction: 'asc' | 'desc' } | null
 } = {}) {
     const queryClient = useQueryClient()
+    const { profile } = useGlobalFilter()
 
     const { data, isLoading } = useQuery({
-        queryKey: ['facturas', page, pageSize, search, filter, month, year, sortConfig],
+        queryKey: ['facturas', page, pageSize, search, filter, month, year, sortConfig, profile],
         queryFn: async () => {
             // Helper to get date range
             const getDateRange = () => {
@@ -52,7 +54,9 @@ export function useInvoices({
 
             // 1. Fetch Counters efficiently (filtered by Date only)
             const fetchCounters = async () => {
-                let q = supabase.from('facturas').select('statuses, es_enviado, estado_vida', { count: 'exact', head: false })
+                let q = supabase.from('facturas')
+                    .select('statuses, es_enviado, estado_vida', { count: 'exact', head: false })
+                    .eq('perfil', profile)
 
                 if (start && end) {
                     q = q.gte('fecha', start).lte('fecha', end)
@@ -70,7 +74,9 @@ export function useInvoices({
             const counters = await fetchCounters()
 
             // 2. Main Data Query
-            let query = supabase.from('facturas').select('*', { count: 'exact' })
+            let query = supabase.from('facturas')
+                .select('*', { count: 'exact' })
+                .eq('perfil', profile)
 
             // Apply Date Filter
             if (start && end) {
@@ -107,7 +113,9 @@ export function useInvoices({
             if (error) throw error
 
             // 3. Stats (Total Facturado, Total Cobrado) - Respecting Date Filter
-            let statsQuery = supabase.from('facturas').select('total, statuses')
+            let statsQuery = supabase.from('facturas')
+                .select('total, statuses')
+                .eq('perfil', profile)
 
             if (start && end) {
                 statsQuery = statsQuery.gte('fecha', start).lte('fecha', end)

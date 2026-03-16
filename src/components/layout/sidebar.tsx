@@ -12,9 +12,13 @@ import {
     Mail,
     ChevronLeft,
     ChevronRight,
+    Circle,
+    Gem,
+    Home
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
+import { useGlobalFilter } from '../providers/global-filter-provider'
 
 const navItems = [
     { href: '/', label: 'Resumen', icon: LayoutDashboard },
@@ -33,21 +37,32 @@ const secondaryItems = [
 interface SidebarContentProps {
     collapsed: boolean
     pathname: string
+    profile: 'personal' | 'compartido'
+    setProfile: (value: 'personal' | 'compartido') => void
     onNavigate?: () => void
 }
 
 // 2. EXTRAEMOS EL COMPONENTE SidebarContent PARA QUE ESTÉ FUERA DE Sidebar()
-export function SidebarContent({ collapsed, pathname, onNavigate }: SidebarContentProps) {
+export function SidebarContent({ collapsed, pathname, profile, setProfile, onNavigate }: SidebarContentProps) {
     return (
         <div className="flex flex-col h-full">
             {/* Logo Area (Modernized) */}
-            <div className="h-20 flex items-center px-6 shrink-0">
+            <div className="h-24 flex items-center px-6 shrink-0 border-b border-white/5">
                 <div className="flex items-center gap-3">
+                    <div className={cn(
+                        "h-10 w-10 rounded-2xl flex items-center justify-center shadow-lg transition-colors duration-500",
+                        profile === 'personal' ? "bg-indigo-600" : "bg-sky-500"
+                    )}>
+                        {profile === 'personal' ? <Gem className="text-white h-5 w-5" /> : <Home className="text-white h-5 w-5" />}
+                    </div>
                     {!collapsed && (
                         <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-500">
-                            <h1 className="text-[12px] font-black text-white leading-tight tracking-tight uppercase opacity-90">
-                                Flownexion<br />Consultoría IA
+                            <h1 className="text-[12px] font-black text-white leading-tight tracking-tight uppercase">
+                                {profile === 'personal' ? 'Flownexion' : 'Villa Blue'}
                             </h1>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                                {profile === 'personal' ? 'Consultoría IA' : 'Gasto Compartido'}
+                            </p>
                         </div>
                     )}
                 </div>
@@ -113,6 +128,40 @@ export function SidebarContent({ collapsed, pathname, onNavigate }: SidebarConte
                         )
                     })}
                 </div>
+
+                {/* Profile Switcher */}
+                <div className="space-y-3 pt-6 border-t border-white/5">
+                    {!collapsed && <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 opacity-70">Perfiles</p>}
+                    <div className={cn("space-y-1.5", collapsed && "flex flex-col items-center px-2")}>
+                        <button
+                            onClick={() => setProfile('personal')}
+                            className={cn(
+                                "flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-xs font-black transition-all duration-300 group relative truncate",
+                                profile === 'personal'
+                                    ? "bg-indigo-600/20 text-indigo-400 ring-1 ring-indigo-500/30"
+                                    : "text-slate-500 hover:bg-white/5 hover:text-slate-300"
+                            )}
+                        >
+                            <Gem className={cn("h-4 w-4 shrink-0", profile === 'personal' ? "text-indigo-400" : "text-slate-500")} />
+                            {!collapsed && <span className="uppercase tracking-widest">Flownexion</span>}
+                            {profile === 'personal' && !collapsed && <div className="absolute right-3 h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />}
+                        </button>
+
+                        <button
+                            onClick={() => setProfile('compartido')}
+                            className={cn(
+                                "flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-xs font-black transition-all duration-300 group relative truncate",
+                                profile === 'compartido'
+                                    ? "bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/30"
+                                    : "text-slate-500 hover:bg-white/5 hover:text-slate-300"
+                            )}
+                        >
+                            <Home className={cn("h-4 w-4 shrink-0", profile === 'compartido' ? "text-sky-400" : "text-slate-500")} />
+                            {!collapsed && <span className="uppercase tracking-widest">Villa Blue</span>}
+                            {profile === 'compartido' && !collapsed && <div className="absolute right-3 h-1.5 w-1.5 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.5)]" />}
+                        </button>
+                    </div>
+                </div>
             </nav>
 
             <div className="p-4 bg-transparent border-t border-sidebar-border hidden"></div>
@@ -124,13 +173,14 @@ export function SidebarContent({ collapsed, pathname, onNavigate }: SidebarConte
 export function Sidebar() {
     const pathname = usePathname()
     const [collapsed, setCollapsed] = useState(false)
+    const { profile, setProfile } = useGlobalFilter()
 
     return (
         <aside className={cn(
             "h-screen sticky top-0 bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 z-40 shadow-[1px_0_10px_rgba(0,0,0,0.02)]",
             collapsed ? "w-20" : "w-64"
         )}>
-            <SidebarContent collapsed={collapsed} pathname={pathname} />
+            <SidebarContent collapsed={collapsed} pathname={pathname} profile={profile} setProfile={setProfile} />
 
             <button
                 onClick={() => setCollapsed(!collapsed)}

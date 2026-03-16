@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { endOfMonth, startOfMonth } from 'date-fns'
+import { useGlobalFilter } from '@/components/providers/global-filter-provider'
 
 export interface Gasto {
     id: string
@@ -38,9 +39,10 @@ export function useExpenses({
     sortConfig?: { key: string, direction: 'asc' | 'desc' } | null
 } = {}) {
     const queryClient = useQueryClient()
+    const { profile } = useGlobalFilter()
 
     const { data, isLoading } = useQuery({
-        queryKey: ['gastos', page, pageSize, search, month, year, sortConfig],
+        queryKey: ['gastos', page, pageSize, search, month, year, sortConfig, profile],
         queryFn: async () => {
             // Helper to get date range
             const getDateRange = () => {
@@ -65,7 +67,9 @@ export function useExpenses({
             const { start, end } = getDateRange()
 
             // 1. Main Data Query
-            let query = supabase.from('gastos').select('*', { count: 'exact' })
+            let query = supabase.from('gastos')
+                .select('*', { count: 'exact' })
+                .eq('perfil', profile)
 
             // Apply Date Filter
             if (start && end) {
@@ -91,7 +95,10 @@ export function useExpenses({
             if (error) throw error
 
             // 2. Stats (Total Gastos) - Respecting Date Filter
-            let statsQuery = supabase.from('gastos').select('total')
+            let statsQuery = supabase.from('gastos')
+                .select('total')
+                .eq('perfil', profile)
+
             if (start && end) {
                 statsQuery = statsQuery.gte('fecha', start).lte('fecha', end)
             }
@@ -146,7 +153,8 @@ export function useExpenses({
                 total: parseFloat(data.total) || 0,
                 es_recurrente: !!data.es_recurrente,
                 frecuencia: data.frecuencia || 'unico',
-                fecha_limite_recurrencia: data.fecha_limite_recurrencia || null
+                fecha_limite_recurrencia: data.fecha_limite_recurrencia || null,
+                perfil: profile
             }
             const { error } = await supabase.from('gastos').insert(payload)
             if (error) throw error

@@ -9,8 +9,10 @@ import { es } from 'date-fns/locale/es'
 interface GlobalFilterContextType {
     month: string // '0'...'11' or 'all'
     year: string // '2024' or 'all'
+    profile: 'personal' | 'compartido'
     setMonth: (value: string) => void
     setYear: (value: string) => void
+    setProfile: (value: 'personal' | 'compartido') => void
     label: string
 }
 
@@ -23,6 +25,7 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
     // Initialize from URL or default
     const currentMonth = searchParams.get('month') || 'all'
     const currentYear = searchParams.get('year') || new Date().getFullYear().toString()
+    const currentProfile = (searchParams.get('p') as 'personal' | 'compartido') || 'personal'
 
     const setMonth = (value: string) => {
         const params = new URLSearchParams(searchParams.toString())
@@ -38,12 +41,26 @@ export function GlobalFilterProvider({ children }: { children: ReactNode }) {
         router.push(`?${params.toString()}`, { scroll: false })
     }
 
+    const setProfile = (value: 'personal' | 'compartido') => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('p', value)
+        router.push(`?${params.toString()}`, { scroll: false })
+    }
+
     const label = currentMonth === 'all'
         ? `Todo ${currentYear === 'all' ? 'el historial' : currentYear}`
         : `${format(new Date(Number(currentYear === 'all' ? new Date().getFullYear() : currentYear), Number(currentMonth)), 'MMMM', { locale: es })} ${currentYear === 'all' ? '' : currentYear}`
 
     return (
-        <GlobalFilterContext.Provider value={{ month: currentMonth, year: currentYear, setMonth, setYear, label }}>
+        <GlobalFilterContext.Provider value={{ 
+            month: currentMonth, 
+            year: currentYear, 
+            profile: currentProfile,
+            setMonth, 
+            setYear, 
+            setProfile,
+            label 
+        }}>
             {children}
         </GlobalFilterContext.Provider>
     )

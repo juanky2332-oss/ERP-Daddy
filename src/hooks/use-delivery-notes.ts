@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { Albaran } from '@/types'
 import { toast } from 'sonner'
 import { endOfMonth, startOfMonth } from 'date-fns'
+import { useGlobalFilter } from '@/components/providers/global-filter-provider'
 
 export function useDeliveryNotes({
     page = 1,
@@ -24,9 +25,10 @@ export function useDeliveryNotes({
     sortConfig?: { key: string, direction: 'asc' | 'desc' } | null
 } = {}) {
     const queryClient = useQueryClient()
+    const { profile } = useGlobalFilter()
 
     const { data, isLoading } = useQuery({
-        queryKey: ['albaranes', page, pageSize, search, filter, month, year, sortConfig],
+        queryKey: ['albaranes', page, pageSize, search, filter, month, year, sortConfig, profile],
         queryFn: async () => {
             // Helper to get date range
             const getDateRange = () => {
@@ -53,6 +55,7 @@ export function useDeliveryNotes({
             // 1. Fetch Counters efficiently (filtered by Date only)
             const fetchCounters = async () => {
                 let q = supabase.from('albaranes').select('statuses, es_enviado, estado_vida', { count: 'exact', head: false })
+                    .eq('perfil', profile)
                     .is('documento_firmado_url', null) // Only normal albaranes
 
                 if (start && end) {
@@ -72,6 +75,7 @@ export function useDeliveryNotes({
 
             // 2. Main Data Query
             let query = supabase.from('albaranes').select('*', { count: 'exact' })
+                .eq('perfil', profile)
                 .is('documento_firmado_url', null) // Only normal albaranes
 
             // Apply Date Filter
@@ -110,6 +114,7 @@ export function useDeliveryNotes({
 
             // 3. Stats (Total Entregado, Total Pendiente) - Respecting Date Filter
             let statsQuery = supabase.from('albaranes').select('total, statuses')
+                .eq('perfil', profile)
                 .is('documento_firmado_url', null)
 
             if (start && end) {

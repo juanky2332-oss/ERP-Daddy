@@ -23,6 +23,7 @@ import { Contacto } from '@/types'
 import { PriceCalculator } from './price-calculator'
 import { ImportDocumentDialog } from './import-dialog'
 import { DocumentPreviewModal } from './document-preview-modal'
+import { useGlobalFilter } from '../providers/global-filter-provider'
 
 // Schema
 const lineItemSchema = z.object({
@@ -54,6 +55,7 @@ interface DocumentFormProps {
 }
 
 export function DocumentForm({ type, initialData, onSubmit, onGeneratePdf }: DocumentFormProps) {
+    const { profile } = useGlobalFilter()
     const [client, setClient] = useState<Contacto | null>(null)
     const [sourceDocInfo, setSourceDocInfo] = useState<{ id: string, type: 'presupuesto' | 'albaran', numero?: string } | null>(
         initialData?.source_document_id ? {
@@ -124,6 +126,7 @@ export function DocumentForm({ type, initialData, onSubmit, onGeneratePdf }: Doc
             iva_porcentaje: ivaPct,
             iva_importe: ivaAmount,
             total: total,
+            perfil: profile,
             source_document_id: sourceDocInfo?.id,
             source_document_type: sourceDocInfo?.type,
             albaran_origen_numero: sourceDocInfo?.type === 'albaran' ? sourceDocInfo?.numero : undefined,

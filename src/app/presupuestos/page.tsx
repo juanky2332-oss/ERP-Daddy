@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useBudgets } from '@/hooks/use-budgets'
 import {
     Table,
@@ -39,6 +40,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 export default function PresupuestosPage() {
+    const router = useRouter()
+    const searchParams = useSearchParams()
     const { month, year } = useGlobalFilter()
 
     // Local state for Tabs (Status Filter)
@@ -63,6 +66,22 @@ export default function PresupuestosPage() {
     })
 
     const totalPages = Math.ceil(totalCount / pageSize)
+
+    // Handle editing from URL - ensure router clean up
+    useEffect(() => {
+        const editId = searchParams.get('edit')
+        if (editId && budgets.length > 0 && !editOpen) {
+            const itemToEdit = budgets.find(b => b.id === editId)
+            if (itemToEdit) {
+                setEditingBudget({ ...itemToEdit, lineas: itemToEdit.lineas ? JSON.parse(JSON.stringify(itemToEdit.lineas)) : [] })
+                setEditOpen(true)
+                // Clear URL
+                const params = new URLSearchParams(searchParams.toString())
+                params.delete('edit')
+                router.replace(`/presupuestos?${params.toString()}`, { scroll: false })
+            }
+        }
+    }, [searchParams, budgets, editOpen, router])
 
     const handleSort = (key: string) => {
         setSortConfig(current => ({

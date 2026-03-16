@@ -265,9 +265,10 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                                         ? `/gastos?template=${t.baseId}&date=${t.fecha}`
                                                                         : `/facturas?template=${t.baseId}&date=${t.fecha}`
                                                                 } else {
-                                                                    window.location.href = t.tipo === 'gasto' 
-                                                                        ? `/gastos?edit=${t.id}` 
-                                                                        : `/facturas?edit=${t.id}`
+                                                                    if (t.tipo === 'gasto') window.location.href = `/gastos?edit=${t.id}`
+                                                                    else if (t.tipo === 'presupuesto') window.location.href = `/presupuestos?edit=${t.id}`
+                                                                    else if (t.tipo === 'albaran') window.location.href = `/albaranes-firmados` // No edit page for delivery notes yet
+                                                                    else window.location.href = `/facturas?edit=${t.id}`
                                                                 }
                                                             }}
                                                             className={cn(
@@ -284,6 +285,8 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                                     {t.isForecast && "PREV. "}
                                                                     {t.tipo === 'gasto' 
                                                                         ? (t.descripcion || t.empresa || 'GASTO') 
+                                                                        : t.tipo === 'presupuesto'
+                                                                        ? (t.descripcion || t.empresa || 'PRESUPUESTO')
                                                                         : (t.empresa || t.descripcion || 'INGRESO')}
                                                                 </span>
                                                                 <span className="font-bold whitespace-nowrap opacity-90 text-[9px]">
@@ -382,7 +385,9 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                     if (t.isForecast) {
                                                         window.location.href = t.tipo === 'gasto' ? `/gastos?template=${t.baseId}&date=${t.fecha}` : `/facturas?template=${t.baseId}&date=${t.fecha}`
                                                     } else {
-                                                        window.location.href = t.tipo === 'gasto' ? `/gastos?edit=${t.id}` : `/facturas?edit=${t.id}`
+                                                        if (t.tipo === 'gasto') window.location.href = `/gastos?edit=${t.id}`
+                                                        else if (t.tipo === 'presupuesto') window.location.href = `/presupuestos?edit=${t.id}`
+                                                        else window.location.href = `/facturas?edit=${t.id}`
                                                     }
                                                 }}
                                                 className="flex justify-between items-center text-[11px] font-bold text-slate-600 cursor-pointer hover:text-indigo-600 transition-colors p-1.5 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
@@ -390,9 +395,15 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                 <span className="truncate max-w-[160px] flex items-center gap-2">
                                                     <span className={cn(
                                                         "h-1.5 w-1.5 rounded-full shrink-0",
-                                                        t.tipo.includes('ingreso') ? "bg-emerald-500" : "bg-rose-500"
+                                                        t.tipo.includes('ingreso') ? "bg-emerald-500" : 
+                                                        t.tipo === 'presupuesto' ? "bg-blue-500" : "bg-rose-500"
                                                     )} />
-                                                    {t.isForecast ? '📋 ' : ''}{t.tipo === 'gasto' ? (t.descripcion || t.empresa) : (t.empresa || t.descripcion)}
+                                                    {t.isForecast ? '📋 ' : ''}
+                                                    {t.tipo === 'gasto' 
+                                                        ? (t.descripcion || t.empresa) 
+                                                        : t.tipo === 'presupuesto'
+                                                        ? (t.descripcion || t.empresa || 'PRESUPUESTO')
+                                                        : (t.empresa || t.descripcion)}
                                                 </span>
                                                 <span className="font-mono text-slate-900 shrink-0">{t.total.toFixed(2)}€</span>
                                             </div>

@@ -303,39 +303,44 @@ export function CalendarFinancialView({ invoices, expenses, budgets = [], delive
                                                     <TooltipPortal>
                                                         <TooltipContent 
                                                             side="top" 
-                                                            className="bg-slate-950 text-white border border-white/10 rounded-2xl p-4 shadow-2xl z-[999] w-[260px] backdrop-blur-xl bg-opacity-90 animate-in fade-in zoom-in-95 duration-200"
+                                                            className="bg-slate-950 text-white border border-white/10 rounded-2xl p-4 shadow-2xl z-[999] w-[280px] backdrop-blur-xl bg-opacity-95 animate-in fade-in zoom-in-95 duration-200"
                                                             sideOffset={8}
                                                         >
-                                                            <div className="space-y-2">
-                                                            <div className="flex items-center justify-between gap-4">
-                                                                <span className={cn(
-                                                                    "text-[9px] font-black uppercase tracking-widest",
-                                                                    t.tipo === 'ingreso_pagado' ? "text-emerald-400" : 
-                                                                    t.tipo === 'ingreso_pendiente' ? "text-orange-400" : 
-                                                                    t.tipo === 'gasto' ? "text-rose-400" : 
-                                                                    t.tipo === 'presupuesto' ? "text-blue-400" : "text-amber-400"
-                                                                )}>
-                                                                    {t.isForecast ? 'PREVISIÓN ' : ''}{t.tipo.replace('_', ' ').toUpperCase()}
-                                                                </span>
-                                                                <span className="text-sm font-black font-mono tracking-tighter text-white">
-                                                                    {formatCurrency(t.total)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent my-2" />
-                                                            <div className="space-y-0.5">
-                                                                <p className="text-[13px] font-black leading-tight text-white mb-1">{t.empresa && t.empresa !== 'S/N' ? t.empresa : (t.descripcion || 'Documento')}</p>
-                                                                <p className="text-[10px] font-medium text-slate-400 flex items-center gap-1.5">
-                                                                    <span className="opacity-50">Ref:</span> {t.referencia || 'N/A'}
-                                                                </p>
-                                                                <p className="text-[10px] font-medium text-slate-400 flex items-center gap-1.5">
-                                                                    <span className="opacity-50">Fecha:</span> {format(parseISO(t.fecha), 'dd/MM/yyyy')}
-                                                                </p>
-                                                            </div>
-                                                            {t.descripcion && t.empresa && t.empresa !== 'S/N' && (
-                                                                <p className="text-[10px] italic text-slate-300 mt-2 leading-relaxed border-l border-white/30 pl-3 line-clamp-3 bg-white/5 p-2 rounded-lg">
-                                                                    {t.descripcion}
-                                                                </p>
-                                                            )}
+                                                            <div className="space-y-3">
+                                                                {/* Schematic Header */}
+                                                                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                                                                    <span className={cn(
+                                                                        "text-[10px] font-black uppercase tracking-[0.2em]",
+                                                                        t.tipo === 'ingreso_pagado' ? "text-emerald-400" : 
+                                                                        t.tipo === 'ingreso_pendiente' ? "text-orange-400" : 
+                                                                        t.tipo === 'gasto' ? "text-rose-400" : 
+                                                                        t.tipo === 'presupuesto' ? "text-blue-400" : "text-amber-400"
+                                                                    )}>
+                                                                        {t.tipo.replace('_', ' ')}
+                                                                    </span>
+                                                                    <span className="text-sm font-black font-mono text-white">
+                                                                        {formatCurrency(t.total)}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Schematic Data Grid */}
+                                                                <div className="grid grid-cols-[60px_1fr] gap-y-1.5 text-[10px]">
+                                                                    <span className="text-slate-500 font-bold uppercase tracking-tighter">Entidad:</span>
+                                                                    <span className="text-white font-black truncate">{t.empresa && t.empresa !== 'S/N' ? t.empresa : 'S/N'}</span>
+                                                                    
+                                                                    <span className="text-slate-500 font-bold uppercase tracking-tighter">Ref.:</span>
+                                                                    <span className="text-slate-300 font-mono truncate">{t.referencia || 'N/A'}</span>
+                                                                    
+                                                                    <span className="text-slate-500 font-bold uppercase tracking-tighter">Fecha:</span>
+                                                                    <span className="text-slate-300 font-mono">{format(parseISO(t.fecha), 'dd/MM/yyyy')}</span>
+
+                                                                    {t.descripcion && (
+                                                                        <>
+                                                                            <span className="text-slate-500 font-bold uppercase tracking-tighter">Concepto:</span>
+                                                                            <span className="text-slate-300 line-clamp-2 leading-tight italic">{t.descripcion}</span>
+                                                                        </>
+                                                                    )}
+                                                                </div>
                                                             {t.isForecast && (
                                                                 <div className="pt-3 border-t border-white/10 mt-3 flex items-center gap-2">
                                                                     <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />

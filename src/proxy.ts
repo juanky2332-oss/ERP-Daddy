@@ -1,8 +1,11 @@
-// DIAGNOSTIC TEST - bypass all auth
 import { NextResponse, type NextRequest } from 'next/server'
+import { updateSession } from '@/lib/supabase/proxy'
 
-export async function proxy(req: NextRequest) {
-  return NextResponse.next()
+export default async function proxy(req: NextRequest) {
+  if (req.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+  return await updateSession(req)
 }
 
 export const config = {

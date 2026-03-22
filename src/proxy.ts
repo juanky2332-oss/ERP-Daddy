@@ -1,15 +1,15 @@
-import { type NextRequest, NextResponse } from 'next/server'
+// v3 - force recompile 1774213225837
+import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/proxy'
 
-export async function proxy(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith('/api/')) {
+export async function proxy(req: NextRequest) {
+  const path = req.nextUrl.pathname
+  if (path.startsWith('/api/')) {
     return NextResponse.next()
   }
-  return await updateSession(request)
+  return await updateSession(req)
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)'
-  ],
+  matcher: ['/((?!_next|favicon).*)'],
 }
